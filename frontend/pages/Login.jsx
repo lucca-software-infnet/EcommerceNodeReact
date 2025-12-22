@@ -60,6 +60,10 @@ export default function Login() {
       </form>
 
       <p style={{ marginTop: 12 }}>
+        <Link to="/forgot-password">Esqueci minha senha</Link>
+      </p>
+
+      <p style={{ marginTop: 12 }}>
         Não tem conta? <Link to="/register">Cadastre-se</Link>
       </p>
     </div>
