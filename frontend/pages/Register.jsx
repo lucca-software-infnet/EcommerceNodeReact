@@ -2,23 +2,27 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../src/api/client.js";
 
-export default function Login() {
+export default function Register() {
   const navigate = useNavigate();
+  const [nome, setNome] = useState("");
+  const [sobrenome, setSobrenome] = useState("");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
+  const [msg, setMsg] = useState("");
   const [erro, setErro] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErro("");
+    setMsg("");
     setLoading(true);
     try {
-      const res = await api.post("/auth/login", { email, senha });
-      localStorage.setItem("accessToken", res.data.accessToken);
-      navigate("/me");
+      await api.post("/auth/register", { nome, sobrenome, email, senha });
+      setMsg("Cadastro criado. Verifique seu e-mail para ativar a conta.");
+      setTimeout(() => navigate("/login"), 800);
     } catch (err) {
-      setErro(err?.response?.data?.erro || "Falha no login");
+      setErro(err?.response?.data?.erro || "Falha no cadastro");
     } finally {
       setLoading(false);
     }
@@ -26,13 +30,31 @@ export default function Login() {
 
   return (
     <div style={{ maxWidth: 420, margin: "40px auto" }}>
-      <h1>Login</h1>
+      <h1>Criar conta</h1>
       <form onSubmit={handleSubmit}>
+        <label>
+          Nome
+          <input
+            value={nome}
+            required
+            onChange={(e) => setNome(e.target.value)}
+            style={{ display: "block", width: "100%", margin: "6px 0 12px" }}
+          />
+        </label>
+
+        <label>
+          Sobrenome
+          <input
+            value={sobrenome}
+            onChange={(e) => setSobrenome(e.target.value)}
+            style={{ display: "block", width: "100%", margin: "6px 0 12px" }}
+          />
+        </label>
+
         <label>
           Email
           <input
             type="email"
-            placeholder="Digite seu e-mail"
             value={email}
             required
             onChange={(e) => setEmail(e.target.value)}
@@ -44,7 +66,6 @@ export default function Login() {
           Senha
           <input
             type="password"
-            placeholder="Digite sua senha"
             value={senha}
             required
             onChange={(e) => setSenha(e.target.value)}
@@ -53,19 +74,17 @@ export default function Login() {
         </label>
 
         {erro ? <p style={{ color: "crimson" }}>{erro}</p> : null}
+        {msg ? <p style={{ color: "green" }}>{msg}</p> : null}
 
         <button type="submit" disabled={loading} style={{ width: "100%" }}>
-          {loading ? "Entrando..." : "Entrar"}
+          {loading ? "Criando..." : "Cadastrar"}
         </button>
       </form>
 
       <p style={{ marginTop: 12 }}>
-        <Link to="/forgot-password">Esqueci minha senha</Link>
-      </p>
-
-      <p style={{ marginTop: 12 }}>
-        Não tem conta? <Link to="/register">Cadastre-se</Link>
+        Já tem conta? <Link to="/login">Entrar</Link>
       </p>
     </div>
   );
 }
+

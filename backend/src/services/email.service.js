@@ -1,10 +1,17 @@
-import { transporter } from "../config/email.js"
+import { transporter } from "../config/email.js";
+import { env } from "../config/env.js";
 
 export const sendEmail = async (to, subject, html) => {
+  if (!transporter) {
+    // fallback para desenvolvimento
+    console.log("[email][dev]", { to, subject, html });
+    return;
+  }
+
   return await transporter.sendMail({
-    from: `"Ecommerce" <${process.env.EMAIL_USER}>`,
+    from: `"Ecommerce" <${env.emailUser}>`,
     to,
     subject,
-    html
-  })
-}
+    html,
+  });
+};

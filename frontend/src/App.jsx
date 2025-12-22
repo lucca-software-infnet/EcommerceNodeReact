@@ -1,52 +1,22 @@
-import ItemLista from "./ItemLista"
-import { useState, useRef } from "react"
+import { Navigate, Route, Routes } from "react-router-dom";
+import Login from "../pages/Login.jsx";
+import Register from "../pages/Register.jsx";
+import Me from "./pages/Me.jsx";
+import Activate from "./pages/Activate.jsx";
+import ForgotPassword from "./pages/ForgotPassword.jsx";
+import ResetPassword from "./pages/ResetPassword.jsx";
 
-function App() {
-
-  const [listaMercado, setListaMercado] = useState(["Banana", "Maça", "Carne"])
-
-  const inputAdicionar = useRef()
-
-  const adicionarElementoNaLista = () => {
-    const novaLista = [...listaMercado]
-    const valorInput =  inputAdicionar.current.value
-
-    if(valorInput){
-      novaLista.push(valorInput)
-      setListaMercado(novaLista)
-      
-    inputAdicionar.current.value = ""
-    }
-    
-  }
-
+export default function App() {
   return (
-
-    <>
-
-      <h1>Lista de Mercado</h1>
-      <input ref={inputAdicionar} type="text" placeholder="Digite um item" />
-      <button onClick={() => adicionarElementoNaLista()} >Adicionar</button>
-
-      { }
-      {listaMercado.length > 0 ? (<ul>
-        {listaMercado.map((itemLista, index) => (
-          <ItemLista
-            key={index}
-            itemLista={itemLista}
-            listaMercado={listaMercado}
-            setListaMercado={setListaMercado} />
-        ))}
-      </ul>
-      ) : (
-        <p>Você não tem nenhum item na sua lista</p>
-      )}
-
-
-
-    </>
-  )
-
+    <Routes>
+      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/activate" element={<Activate />} />
+      <Route path="/me" element={<Me />} />
+      <Route path="*" element={<Navigate to="/login" replace />} />
+    </Routes>
+  );
 }
-
-export default App

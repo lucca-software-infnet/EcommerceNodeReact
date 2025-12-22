@@ -1,87 +1,117 @@
-import authService from "../services/auth.service.js"
+import authService from "../services/auth.service.js";
+import { env } from "../config/env.js";
+
+function getContext(req) {
+  return {
+    ip: req.ip,
+    userAgent: req.headers["user-agent"],
+  };
+}
 
 class AuthController {
-
   async register(req, reply) {
     try {
-      const { email, senha } = req.body
-
-      const result = await authService.register(email, senha)
+      const { email, senha, nome, sobrenome } = req.body || {};
+      const result = await authService.register(
+        { email, senha, nome, sobrenome },
+        getContext(req)
+      );
 
       return reply.code(201).send({
-        msg: "Usuário registrado. Verifique seu e-mail",
-        usuario: result
-      })
-
+        msg: "Usuário registrado. Verifique seu e-mail para ativar a conta.",
+        ...result,
+      });
     } catch (err) {
-      return reply.code(400).send({ erro: err.message })
+      return reply.code(400).send({ erro: err.message });
+    }
+  }
+
+  async activate(req, reply) {
+    try {
+      const token = req.query?.token;
+      const result = await authService.activateAccount(token, getContext(req));
+      return reply.send({ msg: "Conta ativada com sucesso", ...result });
+    } catch (err) {
+      return reply.code(400).send({ erro: err.message });
     }
   }
 
   async login(req, reply) {
     try {
-      const { email, senha } = req.body
+      const { email, senha } = req.body || {};
+      const { accessToken, refreshToken, usuario } = await authService.login(
+        { email, senha },
+        {
+          redis: req.server.redis,
+          ...getContext(req),
+        }
+      );
 
-      const tokens = await authService.login(email, senha)
+      // refresh token em cookie httpOnly (mais robusto)
+      reply.setCookie("refreshToken", refreshToken, {
+        httpOnly: true,
+        secure: env.cookieSecure,
+        sameSite: "lax",
+        path: "/api/auth/refresh",
+        maxAge: 60 * 60 * 24 * 7,
+      });
 
-      return reply.send(tokens)
-
+      return reply.send({ accessToken, usuario });
     } catch (err) {
-      return reply.code(401).send({ erro: err.message })
+      return reply.code(401).send({ erro: err.message });
     }
   }
 
   async refresh(req, reply) {
     try {
-      const { refreshToken } = req.body
-
-      const tokens = await authService.refresh(refreshToken)
-
-      return reply.send(tokens)
-
+      const refreshToken =
+        req.cookies?.refreshToken || req.body?.refreshToken || null;
+      const result = await authService.refresh(refreshToken, {
+        redis: req.server.redis,
+        ...getContext(req),
+      });
+      return reply.send(result);
     } catch (err) {
-      return reply.code(400).send({ erro: err.message })
+      return reply.code(400).send({ erro: err.message });
     }
   }
 
   async requestPassword(req, reply) {
     try {
-      const { email } = req.body
-
-      await authService.requestPasswordReset(email)
-
-      return reply.send({ msg: "Email enviado com link de redefinição" })
-
+      const { email } = req.body || {};
+      await authService.requestPasswordReset(email, getContext(req));
+      return reply.send({
+        msg: "Se o e-mail existir, enviaremos um link de redefinição.",
+      });
     } catch (err) {
-      return reply.code(400).send({ erro: err.message })
+      return reply.code(400).send({ erro: err.message });
     }
   }
 
   async resetPassword(req, reply) {
     try {
-      const { token, senha } = req.body
-
-      await authService.resetPassword(token, senha)
-
-      return reply.send({ msg: "Senha atualizada" })
-
+      const { token, senha } = req.body || {};
+      await authService.resetPassword({ token, senha }, getContext(req));
+      return reply.send({ msg: "Senha atualizada" });
     } catch (err) {
-      return reply.code(400).send({ erro: err.message })
+      return reply.code(400).send({ erro: err.message });
     }
   }
 
   async logout(req, reply) {
     try {
-      const { refreshToken } = req.body
+      const userId = req.user?.userId;
+      await authService.logout(userId, {
+        redis: req.server.redis,
+        ...getContext(req),
+      });
 
-      await authService.logout(refreshToken)
-
-      return reply.send({ msg: "Logout realizado" })
-
+      reply.clearCookie("refreshToken", { path: "/api/auth/refresh" });
+      return reply.send({ msg: "Logout realizado" });
     } catch (err) {
-      return reply.code(400).send({ erro: err.message })
+      return reply.code(400).send({ erro: err.message });
     }
   }
 }
 
-export default new AuthController()
+export default new AuthController();
