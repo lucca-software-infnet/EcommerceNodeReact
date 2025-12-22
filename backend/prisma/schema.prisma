@@ -1,0 +1,138 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model Usuario {
+  id             Int         @id @default(autoincrement())
+  imagem         String?
+  nome           String
+  sobrenome      String?
+  email          String      @unique
+  password       String
+  ehAdmin        Boolean     @default(false)
+  cpf            String?     @unique
+  sexo           String?
+  celular        String?
+  dataNascimento DateTime?
+  dataRegistro   DateTime    @default(now())
+
+  // endereço 1:1
+  endereco       Endereco?
+
+  // produtos que o usuário anunciou/vende (1:N)
+  produtos       Produto[]
+
+  // compras feitas por esse usuário (objeto Compras)
+  compras        Compra[]    @relation("CompradorCompras")
+
+  // itens vendidos (quando produtos dele são vendidos) - via CompraItem.vendedor
+  produtosVendidos CompraItem[] @relation("VendedorItems")
+
+  // carrinho 1:1
+  carrinho       Carrinho?
+}
+
+model Endereco {
+  id          Int     @id @default(autoincrement())
+  cep         String
+  logradouro  String
+  bairro      String
+  localidade  String
+  uf          String
+  numero      String?
+  complemento String?
+
+  usuarioId   Int     @unique
+  usuario     Usuario @relation(fields: [usuarioId], references: [id])
+}
+
+model Produto {
+  id           Int             @id @default(autoincrement())
+  codigoBarra  String          @unique
+  descricao    String
+  validade     DateTime?
+  volume       Int
+  quantidade   Int             @default(0)
+  precoCusto   Decimal
+  precoVenda   Decimal
+  marca        String?
+  departamento String
+  dataRegistro DateTime        @default(now())
+
+  imagens      ImagemProduto[]
+  vendedorId   Int
+  vendedor     Usuario         @relation(fields: [vendedorId], references: [id])
+
+  itensCarrinho ItemCarrinho[]
+  compraItems   CompraItem[]    // itens de compra que referenciam este produto
+}
+
+model ImagemProduto {
+  id          Int      @id @default(autoincrement())
+  nomeArquivo String
+  produtoId   Int
+  produto     Produto  @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+}
+
+model Carrinho {
+  id        Int            @id @default(autoincrement())
+  total     Decimal        @default(0)
+
+  usuarioId Int            @unique
+  usuario   Usuario        @relation(fields: [usuarioId], references: [id])
+
+  itens     ItemCarrinho[]
+}
+
+model ItemCarrinho {
+  id           Int       @id @default(autoincrement())
+  quantidade   Int
+  precoUnitario Decimal
+
+  produtoId    Int
+  produto      Produto   @relation(fields: [produtoId], references: [id])
+
+  carrinhoId   Int
+  carrinho     Carrinho  @relation(fields: [carrinhoId], references: [id])
+}
+
+/*
+  Compra = pedido realizado pelo comprador (objeto Compras do Usuario)
+  CompraItem = cada item da compra, referencia produto + vendedor (dono do produto)
+*/
+model Compra {
+  id           Int          @id @default(autoincrement())
+  dataCompra   DateTime     @default(now())
+  total        Decimal
+
+  compradorId  Int
+  comprador    Usuario      @relation("CompradorCompras", fields: [compradorId], references: [id])
+
+  itens        CompraItem[]
+}
+
+model CompraItem {
+  id           Int       @id @default(autoincrement())
+  quantidade   Int
+  precoUnit    Decimal
+
+  produtoId    Int
+  produto      Produto   @relation(fields: [produtoId], references: [id])
+
+  compraId     Int
+  compra       Compra    @relation(fields: [compraId], references: [id])
+
+  // vendedor: dono do produto (para que ele veja que vendeu)
+  vendedorId   Int
+  vendedor     Usuario   @relation("VendedorItems", fields: [vendedorId], references: [id])
+}
