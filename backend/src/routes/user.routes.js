@@ -1,37 +1,26 @@
-import userController from "../controllers/user.controller.js"
-import authMiddleware from "../middlewares/auth.middleware.js"
+import userController from "../controllers/user.controller.js";
+import authMiddleware from "../middlewares/auth.middleware.js";
 
 async function userRoutes(fastify, opts) {
 
-  fastify.get(
-    "/usuarios",
-    { preHandler: authMiddleware },
-    userController.getAll
-  )
+  fastify.get("/users/me", { preHandler: authMiddleware }, userController.getMe);
 
-  fastify.get(
-    "/usuarios/:id",
-    { preHandler: authMiddleware },
-    userController.getById
-  )
+  fastify.put("/users/me", { preHandler: authMiddleware }, userController.updateMe);
 
-  fastify.put(
-    "/usuarios/:id",
-    { preHandler: authMiddleware },
-    userController.update
-  )
+  // admin / suporte
+  fastify.get("/users", { preHandler: authMiddleware }, userController.getAll);
+
+  fastify.get("/users/:id", { preHandler: authMiddleware }, userController.getById);
+
+  fastify.put("/users/:id", { preHandler: authMiddleware }, userController.update);
 
   fastify.patch(
-    "/usuarios/:id/desativar",
+    "/users/:id/desativar",
     { preHandler: authMiddleware },
     userController.deactivate
-  )
+  );
 
-  fastify.delete(
-    "/usuarios/:id",
-    { preHandler: authMiddleware },
-    userController.delete
-  )
+  fastify.delete("/users/:id", { preHandler: authMiddleware }, userController.delete);
 }
 
-export default userRoutes
+export default userRoutes;

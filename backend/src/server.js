@@ -1,48 +1,64 @@
-// backend/server.js
 import Fastify from "fastify";
 import dotenv from "dotenv";
 import cors from "@fastify/cors";
-import rateLimit from "@fastify/rate-limit";
-import { redisClient } from "./src/config/redis.js";
+import cookie from "@fastify/cookie";
+import helmet from "@fastify/helmet";
 
-import authRoutes from "./src/routes/auth.routes.js";
-import userRoutes from "./src/routes/user.routes.js";
+import { env } from "./config/env.js";
+import { redis } from "./config/redis.js";
+import { prisma } from "./config/prisma.js";
 
-import { errorMiddleware } from "./src/middlewares/error.middleware.js";
-import { redisSessionMiddleware } from "./src/middlewares/redisSession.middleware.js";
+import authRoutes from "./routes/auth.routes.js";
+import userRoutes from "./routes/user.routes.js";
+
+import errorMiddleware from "./middlewares/error.middleware.js";
 
 dotenv.config();
 
-const app = Fastify({
-  logger: true
+const app = Fastify({ logger: true });
+
+// Conexões
+try {
+  if (env.redisUrl) await redis.connect();
+} catch (err) {
+  app.log.error({ err }, "Falha ao conectar no Redis");
+}
+
+app.decorate("redis", redis);
+
+// Plugins
+await app.register(helmet);
+await app.register(cookie);
+await app.register(cors, {
+  origin: env.frontendUrl,
+  credentials: true,
 });
 
-// Middlewares globais
-await app.register(cors);
-app.addHook("preHandler", redisSessionMiddleware);
+// Healthcheck
+app.get("/health", async () => ({ ok: true }));
 
-// Rate Limit global
-await app.register(rateLimit, {
-  max: 100,
-  timeWindow: "1 minute",
-  redis: redisClient
-});
-
-// Registrar rotas
-app.register(authRoutes, { prefix: "/usuarios" });
-app.register(userRoutes, { prefix: "/usuarios" });
+// Rotas
+app.register(authRoutes, { prefix: "/api" });
+app.register(userRoutes, { prefix: "/api" });
 
 // Erro global
 app.setErrorHandler(errorMiddleware);
 
+// graceful shutdown
+app.addHook("onClose", async () => {
+  try {
+    await prisma.$disconnect();
+  } catch {}
+  try {
+    if (redis?.isOpen) await redis.quit();
+  } catch {}
+});
+
 // Iniciar servidor
 const start = async () => {
   try {
-    await app.listen({
-      port: process.env.PORT || 3000,
-      host: "0.0.0.0",
-    });
-    console.log("🔥 Servidor rodando...");
+    await app.listen({ port: env.port, host: "0.0.0.0" });
+    app.log.info(`Servidor rodando na porta ${env.port}`);
   } catch (err) {
     app.log.error(err);
     process.exit(1);
