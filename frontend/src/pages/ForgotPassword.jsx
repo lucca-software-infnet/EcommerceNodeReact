@@ -1,55 +1,60 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { api } from "../api/client";
+import { api } from "../api/client.js";
+import "../styles/ForgotPassword.css";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
-  const [msg, setMsg] = useState("");
+  const [message, setMessage] = useState("");
   const [erro, setErro] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErro("");
-    setMsg("");
+    setMessage("");
     setLoading(true);
     try {
-      const res = await api.post("/auth/password/forgot", { email });
-      setMsg(res.data?.msg || "Se o e-mail existir, enviaremos um link.");
+      await api.post("/auth/forgot-password", { email });
+      setMessage("Email enviado com sucesso! Verifique sua caixa de entrada.");
     } catch (err) {
-      setErro(err?.response?.data?.erro || "Falha ao solicitar redefinição");
+      setErro(err?.response?.data?.erro || "Falha ao enviar email");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{ maxWidth: 420, margin: "40px auto" }}>
-      <h1>Esqueci minha senha</h1>
-      <form onSubmit={handleSubmit}>
-        <label>
-          Email
-          <input
-            type="email"
-            value={email}
-            required
-            onChange={(e) => setEmail(e.target.value)}
-            style={{ display: "block", width: "100%", margin: "6px 0 12px" }}
-          />
-        </label>
+    <div className="forgot-wrapper">
+      <div className="forgot-container">
+        <h1>Esqueci minha senha</h1>
+        <p>Digite seu e-mail para receber instruções de redefinição</p>
+        <form onSubmit={handleSubmit}>
+          <div className="forgot-group">
+            <label>Email</label>
+            <input
+              type="email"
+              placeholder="Digite seu e-mail"
+              value={email}
+              required
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
 
-        {erro ? <p style={{ color: "crimson" }}>{erro}</p> : null}
-        {msg ? <p style={{ color: "green" }}>{msg}</p> : null}
+          {erro && <p className="forgot-error">{erro}</p>}
+          {message && <p className="forgot-success">{message}</p>}
 
-        <button type="submit" disabled={loading} style={{ width: "100%" }}>
-          {loading ? "Enviando..." : "Enviar link"}
-        </button>
-      </form>
+          <button type="submit" className="forgot-button" disabled={loading}>
+            {loading ? "Enviando..." : "Enviar email"}
+          </button>
+        </form>
 
-      <p style={{ marginTop: 12 }}>
-        <Link to="/login">Voltar ao login</Link>
-      </p>
+        <div className="forgot-footer">
+          <p>
+            <Link to="/login">Voltar ao login</Link>
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
-

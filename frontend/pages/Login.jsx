@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../src/api/client.js";
+import "../src/styles/Login.css";
+
 
 export default function Login() {
   const navigate = useNavigate();
@@ -25,47 +27,48 @@ export default function Login() {
   };
 
   return (
-    <div style={{ maxWidth: 420, margin: "40px auto" }}>
-      <h1>Login</h1>
-      <form onSubmit={handleSubmit}>
-        <label>
-          Email
-          <input
-            type="email"
-            placeholder="Digite seu e-mail"
-            value={email}
-            required
-            onChange={(e) => setEmail(e.target.value)}
-            style={{ display: "block", width: "100%", margin: "6px 0 12px" }}
-          />
-        </label>
+    <div className="login-wrapper">
+      <div className="login-container">
+        <h1>Login</h1>
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label>Email</label>
+            <input
+              type="email"
+              placeholder="Digite seu e-mail"
+              value={email}
+              required
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
 
-        <label>
-          Senha
-          <input
-            type="password"
-            placeholder="Digite sua senha"
-            value={senha}
-            required
-            onChange={(e) => setSenha(e.target.value)}
-            style={{ display: "block", width: "100%", margin: "6px 0 12px" }}
-          />
-        </label>
+          <div className="form-group">
+            <label>Senha</label>
+            <input
+              type="password"
+              placeholder="Digite sua senha"
+              value={senha}
+              required
+              onChange={(e) => setSenha(e.target.value)}
+            />
+          </div>
 
-        {erro ? <p style={{ color: "crimson" }}>{erro}</p> : null}
+          {erro && <p className="error-message">{erro}</p>}
 
-        <button type="submit" disabled={loading} style={{ width: "100%" }}>
-          {loading ? "Entrando..." : "Entrar"}
-        </button>
-      </form>
+          <button type="submit" disabled={loading}>
+            {loading ? "Entrando..." : "Entrar"}
+          </button>
+        </form>
 
-      <p style={{ marginTop: 12 }}>
-        <Link to="/forgot-password">Esqueci minha senha</Link>
-      </p>
-
-      <p style={{ marginTop: 12 }}>
-        Não tem conta? <Link to="/register">Cadastre-se</Link>
-      </p>
+        <div className="login-footer">
+          <p>
+            <Link to="/forgot-password">Esqueci minha senha</Link>
+          </p>
+          <p>
+            Não tem conta? <Link to="/register">Cadastre-se</Link>
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
