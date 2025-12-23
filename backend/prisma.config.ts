@@ -4,7 +4,8 @@ dotenv.config(); // garante que o .env seja lido
 import { defineConfig } from "prisma/config";
 
 export default defineConfig({
-  schema: "prisma/schema.prisma",
+  // Mantém schema.prisma intacto; gera schema compatível em build/postinstall
+  schema: "prisma/schema.generated.prisma",
   migrations: {
     path: "prisma/migrations",
   },

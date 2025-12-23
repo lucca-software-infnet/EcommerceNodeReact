@@ -17,6 +17,10 @@ import { prisma } from "./config/prisma.js";
 import authRoutes from "./routes/auth.routes.js";
 import userRoutes from "./routes/user.routes.js";
 import produtoRoutes from "./routes/produto.routes.js";
+import checkoutRoutes from "./routes/checkout.routes.js";
+import pedidosRoutes from "./routes/pedidos.routes.js";
+import vendasRoutes from "./routes/vendas.routes.js";
+import pagamentoRoutes from "./routes/pagamento.routes.js";
 
 import errorMiddleware from "./middlewares/error.middleware.js";
 
@@ -66,12 +70,6 @@ await app.register(multipart, {
   }
 });
 
-// servir arquivos estáticos
-await app.register(fastifyStatic, {
-  root: uploadBase,
-  prefix: "/uploads/"
-});
-
 await app.register(fastifyStatic, {
   root: path.resolve("uploads"),
   prefix: "/uploads/",
@@ -95,6 +93,10 @@ app.get("/health", async () => ({ ok: true }));
 app.register(authRoutes, { prefix: "/api" });
 app.register(userRoutes, { prefix: "/api" });
 app.register(produtoRoutes, { prefix: "/api" });
+app.register(checkoutRoutes, { prefix: "/api" });
+app.register(pedidosRoutes, { prefix: "/api" });
+app.register(vendasRoutes, { prefix: "/api" });
+app.register(pagamentoRoutes, { prefix: "/api" });
 
 
 /* =========================

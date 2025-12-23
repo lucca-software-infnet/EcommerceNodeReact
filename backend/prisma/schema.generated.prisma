@@ -1,0 +1,190 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+/* =========================
+   USUÁRIO
+========================= */
+model Usuario {
+  id             Int       @id @default(autoincrement())
+  imagem         String?
+  nome           String
+  sobrenome      String?
+  email          String    @unique
+  password       String
+  ehAdmin        Boolean   @default(false)
+  cpf            String?   @unique
+  sexo           String?
+  celular        String?
+  dataNascimento DateTime?
+  dataRegistro   DateTime  @default(now())
+
+  enderecos      Endereco[]
+  produtos       Produto[]
+  compras        Compra[]  @relation("CompradorCompras")
+  produtosVendidos CompraItem[] @relation("VendedorItems")
+  carrinho       Carrinho?
+}
+
+/* =========================
+   ENDEREÇO DO USUÁRIO
+   (EDITÁVEL)
+========================= */
+model Endereco {
+  id          Int     @id @default(autoincrement())
+  cep         String
+  logradouro  String
+  bairro      String
+  localidade  String
+  uf          String
+  numero      String?
+  complemento String?
+
+  usuarioId   Int
+  usuario     Usuario @relation(fields: [usuarioId], references: [id])
+}
+
+/* =========================
+   PRODUTO
+========================= */
+model Produto {
+  id           Int       @id @default(autoincrement())
+  codigoBarra  String    @unique
+  descricao    String
+  validade     DateTime?
+  volume       Int
+  quantidade   Int       @default(0)
+  precoCusto   Decimal   @db.Decimal(10,2)
+  precoVenda   Decimal   @db.Decimal(10,2)
+  marca        String?
+  departamento String
+  dataRegistro DateTime  @default(now())
+
+  vendedorId   Int
+  vendedor     Usuario   @relation(fields: [vendedorId], references: [id])
+
+  imagens        ImagemProduto[]
+  itensCarrinho ItemCarrinho[]
+  compraItems   CompraItem[]
+
+  // relação inversa para `EstoqueMovimento.produto` (não altera o BD)
+  estoqueMovimentos EstoqueMovimento[]
+}
+
+/* =========================
+   IMAGENS DO PRODUTO
+========================= */
+model ImagemProduto {
+  id          Int     @id @default(autoincrement())
+  nomeArquivo String
+
+  produtoId   Int
+  produto     Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+}
+
+/* =========================
+   CARRINHO
+========================= */
+model Carrinho {
+  id        Int     @id @default(autoincrement())
+  total     Decimal @db.Decimal(10,2)
+
+  usuarioId Int     @unique
+  usuario   Usuario @relation(fields: [usuarioId], references: [id])
+
+  itens     ItemCarrinho[]
+}
+
+model ItemCarrinho {
+  id           Int      @id @default(autoincrement())
+  quantidade   Int
+  precoUnitario Decimal @db.Decimal(10,2)
+
+  produtoId    Int
+  produto      Produto  @relation(fields: [produtoId], references: [id])
+
+  carrinhoId   Int
+  carrinho     Carrinho @relation(fields: [carrinhoId], references: [id])
+}
+
+/* =========================
+   COMPRA / PEDIDO
+========================= */
+model Compra {
+  id           Int       @id @default(autoincrement())
+  dataCompra   DateTime  @default(now())
+  total        Decimal   @db.Decimal(10,2)
+  status       String    // PENDENTE, PAGO, ENVIADO, CANCELADO
+
+  compradorId  Int
+  comprador    Usuario   @relation("CompradorCompras", fields: [compradorId], references: [id])
+
+  itens        CompraItem[]
+  endereco     EnderecoCompra?
+  pagamento    Pagamento?
+}
+
+/* =========================
+   SNAPSHOT DO ENDEREÇO
+========================= */
+model EnderecoCompra {
+  id          Int     @id @default(autoincrement())
+  cep         String
+  logradouro  String
+  bairro      String
+  localidade  String
+  uf          String
+  numero      String?
+  complemento String?
+
+  compraId Int  @unique
+  compra   Compra @relation(fields: [compraId], references: [id])
+}
+
+/* =========================
+   ITENS DA COMPRA
+========================= */
+model CompraItem {
+  id           Int      @id @default(autoincrement())
+  quantidade   Int
+  precoUnit    Decimal  @db.Decimal(10,2)
+
+  produtoId    Int
+  produto      Produto  @relation(fields: [produtoId], references: [id])
+
+  compraId     Int
+  compra       Compra   @relation(fields: [compraId], references: [id])
+
+  vendedorId   Int
+  vendedor     Usuario  @relation("VendedorItems", fields: [vendedorId], references: [id])
+}
+
+/* =========================
+   PAGAMENTO
+========================= */
+model Pagamento {
+  id        Int      @id @default(autoincrement())
+  valor     Decimal  @db.Decimal(10,2)
+  status    String   // PENDENTE, APROVADO, RECUSADO
+  metodo    String   // PIX, CARTAO
+
+  compraId  Int     @unique
+  compra    Compra  @relation(fields: [compraId], references: [id])
+}
+
+/* =========================
+   MOVIMENTAÇÃO DE ESTOQUE
+========================= */
+model EstoqueMovimento {
+  id         Int      @id @default(autoincrement())
+  tipo       String   // ENTRADA, SAIDA
+  quantidade Int
+  data       DateTime @default(now())
+
+  produtoId  Int
+  produto    Produto  @relation(fields: [produtoId], references: [id])
+}

@@ -1,3 +1,4 @@
+import bcrypt from "bcrypt";
 import { prisma } from "../config/prisma.js";
 
 const safeSelect = {
@@ -12,11 +13,6 @@ const safeSelect = {
   celular: true,
   dataNascimento: true,
   dataRegistro: true,
-  ativo: true,
-  ativadoEm: true,
-  ultimoLoginEm: true,
-  ultimoLoginIp: true,
-  ultimoLoginUserAgent: true,
 };
 
 class UserService {
@@ -67,17 +63,53 @@ class UserService {
 
 
   async update(id, data) {
+    const updateData = {
+      imagem: data.imagem,
+      nome: data.nome,
+      sobrenome: data.sobrenome,
+      email: data.email ? String(data.email).trim().toLowerCase() : undefined,
+      ehAdmin: typeof data.ehAdmin === "boolean" ? data.ehAdmin : undefined,
+      cpf: data.cpf ?? undefined,
+      sexo: data.sexo,
+      celular: data.celular,
+      dataNascimento: data.dataNascimento
+        ? new Date(data.dataNascimento)
+        : undefined,
+    };
+
+    // suporte opcional a atualização de senha por admin
+    if (data.senha || data.password) {
+      const raw = String(data.senha || data.password);
+      updateData.password = await bcrypt.hash(raw, 12);
+    }
+
     return prisma.usuario.update({
       where: { id: Number(id) },
-      data,
+      data: updateData,
       select: safeSelect,
     });
   }
 
   async deactivate(id) {
+    // Sem campo "ativo" no schema: desativação via anonimização + invalidar credenciais
+    const numericId = Number(id);
+    const newEmail = `deactivated+${numericId}+${Date.now()}@example.invalid`;
+    const randomSecret = `${numericId}:${Date.now()}:${Math.random()}`;
+    const newPasswordHash = await bcrypt.hash(randomSecret, 12);
+
     return prisma.usuario.update({
-      where: { id: Number(id) },
-      data: { ativo: false },
+      where: { id: numericId },
+      data: {
+        email: newEmail,
+        password: newPasswordHash,
+        imagem: null,
+        nome: "Desativado",
+        sobrenome: null,
+        cpf: null,
+        sexo: null,
+        celular: null,
+        dataNascimento: null,
+      },
       select: safeSelect,
     });
   }

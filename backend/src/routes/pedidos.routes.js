@@ -1,66 +1,73 @@
-export async function pedidosRoutes(app) {
+import authMiddleware from "../middlewares/auth.middleware.js";
 
-  app.get("/me/pedidos", {
-    preHandler: [app.authenticate]
-  }, async (request, reply) => {
+export default async function pedidosRoutes(app) {
 
-    const usuarioId = request.user.id
+  app.get(
+    "/me/pedidos",
+    { preHandler: authMiddleware },
+    async (request, reply) => {
 
-    const pedidos = await app.prisma.compra.findMany({
-      where: {
-        compradorId: usuarioId
-      },
-      orderBy: {
-        dataCompra: "desc"
-      },
-      include: {
-        endereco: true,
-        pagamento: true,
-        itens: {
-          include: {
-            produto: {
-              include: {
-                imagens: true
-              }
-            }
-          }
-        }
-      }
-    })
+      const usuarioId = request.user.id;
 
-    return pedidos
-  })
-}
-
-app.get("/me/pedidos/:id", {
-  preHandler: [app.authenticate]
-}, async (request, reply) => {
-
-  const usuarioId = request.user.id
-  const pedidoId = Number(request.params.id)
-
-  const pedido = await app.prisma.compra.findFirst({
-    where: {
-      id: pedidoId,
-      compradorId: usuarioId
-    },
-    include: {
-      endereco: true,
-      pagamento: true,
-      itens: {
+      const pedidos = await app.prisma.compra.findMany({
+        where: {
+          compradorId: usuarioId,
+        },
+        orderBy: {
+          dataCompra: "desc",
+        },
         include: {
-          produto: true
-        }
-      }
+          endereco: true,
+          pagamento: true,
+          itens: {
+            include: {
+              produto: {
+                include: {
+                  imagens: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      return pedidos;
     }
-  })
+  );
 
-  if (!pedido) {
-    return reply.code(404).send({ error: "Pedido não encontrado" })
-  }
+  app.get(
+    "/me/pedidos/:id",
+    { preHandler: authMiddleware },
+    async (request, reply) => {
 
-  return pedido
-})
+      const usuarioId = request.user.id;
+      const pedidoId = Number(request.params.id);
 
+      const pedido = await app.prisma.compra.findFirst({
+        where: {
+          id: pedidoId,
+          compradorId: usuarioId,
+        },
+        include: {
+          endereco: true,
+          pagamento: true,
+          itens: {
+            include: {
+              produto: {
+                include: {
+                  imagens: true,
+                },
+              },
+            },
+          },
+        },
+      });
 
+      if (!pedido) {
+        return reply.code(404).send({ error: "Pedido não encontrado" });
+      }
 
+      return pedido;
+    }
+  );
+}

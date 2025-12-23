@@ -1,4 +1,4 @@
-import { prisma } from "../lib/prisma.js"
+import { prisma } from "../config/prisma.js"
 
 export async function confirmarPagamento(compraId) {
   await prisma.$transaction(async (tx) => {

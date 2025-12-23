@@ -1,24 +1,30 @@
-import redis from "../services/redis.service.js"
-import jwt from "jsonwebtoken"
+import { verifyAccessToken } from "../utils/jwtTokens.js";
 
 export default async function redisSession(req, reply) {
   try {
-    const authHeader = req.headers.authorization
+    const authHeader = req.headers.authorization;
     if (!authHeader)
-      return reply.code(401).send({ erro: "Token não enviado" })
+      return reply.code(401).send({ erro: "Token não enviado" });
 
-    const token = authHeader.split(" ")[1]
+    const token = authHeader.split(" ")[1];
+    if (!token) return reply.code(401).send({ erro: "Token não enviado" });
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET)
+    const decoded = verifyAccessToken(token);
 
-    const exists = await redis.get(`session:${decoded.id}`)
+    const redis = req.server.redis;
+    if (!redis || !redis.isOpen) {
+      return reply.code(503).send({ erro: "Sessão indisponível (Redis offline)" });
+    }
+
+    const exists = await redis.get(`session:${decoded.id}`);
 
     if (!exists)
-      return reply.code(401).send({ erro: "Sessão expirada ou inválida" })
+      return reply.code(401).send({ erro: "Sessão expirada ou inválida" });
 
-    req.user = { userId: decoded.id }
+    // Padronização
+    req.user = { id: Number(decoded.id) };
 
   } catch (err) {
-    return reply.code(401).send({ erro: "Sessão inválida" })
+    return reply.code(401).send({ erro: "Sessão inválida" });
   }
 }

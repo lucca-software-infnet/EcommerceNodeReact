@@ -1,4 +1,3 @@
-import { prisma } from "../config/prisma.js";
 import { logger, logError } from "../utils/logger.js";
 
 export const auditLog = async ({
@@ -9,25 +8,11 @@ export const auditLog = async ({
   meta = null,
 }) => {
   try {
-    // auditoria em BD (principal)
-    await prisma.auditLog.create({
-      data: {
-        acao,
-        usuarioId,
-        ip,
-        userAgent,
-        meta,
-      },
-    });
+    // O schema.prisma atual não possui modelo de auditoria.
+    // Para manter consistência com o schema, registramos auditoria apenas em log.
+    logger.info({ acao, usuarioId, ip, userAgent, meta }, "[audit]");
   } catch (err) {
-    // fallback em arquivo
-    try {
-      logger.info({ acao, usuarioId, ip, userAgent, meta });
-    } catch (e) {
-      logError.error("Erro ao registrar auditoria", e);
-    }
-
     // não quebra o fluxo de auth por falha de auditoria
-    logError.error("Falha ao salvar auditoria no Prisma", err);
+    logError.error("Falha ao registrar auditoria", err);
   }
 };

@@ -1,29 +1,33 @@
-export async function vendasRoutes(app) {
+import authMiddleware from "../middlewares/auth.middleware.js";
 
-  app.get("/vendedor/vendas", {
-    preHandler: [app.authenticate]
-  }, async (request, reply) => {
+export default async function vendasRoutes(app) {
 
-    const vendedorId = request.user.id
+  app.get(
+    "/vendedor/vendas",
+    { preHandler: authMiddleware },
+    async (request, reply) => {
 
-    const vendas = await app.prisma.compraItem.findMany({
-      where: {
-        vendedorId
-      },
-      orderBy: {
-        id: "desc"
-      },
-      include: {
-        compra: {
-          include: {
-            endereco: true,
-            pagamento: true
-          }
+      const vendedorId = request.user.id;
+
+      const vendas = await app.prisma.compraItem.findMany({
+        where: {
+          vendedorId,
         },
-        produto: true
-      }
-    })
+        orderBy: {
+          id: "desc",
+        },
+        include: {
+          compra: {
+            include: {
+              endereco: true,
+              pagamento: true,
+            },
+          },
+          produto: true,
+        },
+      });
 
-    return vendas
-  })
+      return vendas;
+    }
+  );
 }

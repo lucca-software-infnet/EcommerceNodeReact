@@ -2,7 +2,8 @@ import bcrypt from "bcrypt";
 import { prisma } from "../config/prisma.js";
 import { env } from "../config/env.js";
 import { auditLog } from "./audit.service.js";
-import { generateCryptoToken, hashToken } from "./crypto.service.js";
+import jwt from "jsonwebtoken";
+import { hashToken } from "./crypto.service.js";
 import { sendEmail } from "./email.service.js";
 import {
   REFRESH_TOKEN_TTL_SECONDS,
@@ -16,14 +17,7 @@ function safeUser(user) {
   if (!user) return null;
   // remove campos sensíveis
   // eslint-disable-next-line no-unused-vars
-  const {
-    password,
-    tokenAtivacaoHash,
-    tokenAtivacaoExpiraEm,
-    resetPasswordTokenHash,
-    resetPasswordExpiraEm,
-    ...rest
-  } = user;
+  const { password, ...rest } = user;
   return rest;
 }
 
@@ -43,55 +37,45 @@ async function deleteRefreshToken(redis, userId) {
   await redis.del(`refresh:${userId}`);
 }
 
+function signPasswordResetToken(userId) {
+  if (!env.jwtRefreshSecret) throw new Error("JWT_REFRESH_SECRET não configurado");
+  return jwt.sign(
+    { id: Number(userId), typ: "pwdreset" },
+    env.jwtRefreshSecret,
+    { expiresIn: "15m", issuer: env.jwtIssuer }
+  );
+}
+
+function verifyPasswordResetToken(token) {
+  if (!env.jwtRefreshSecret) throw new Error("JWT_REFRESH_SECRET não configurado");
+  const decoded = jwt.verify(token, env.jwtRefreshSecret, { issuer: env.jwtIssuer });
+  if (decoded?.typ !== "pwdreset") throw new Error("Token inválido");
+  return decoded;
+}
+
 const authService = {
   async register({ email, senha, nome = "Usuário", sobrenome = null }, { ip, userAgent } = {}) {
     const normalizedEmail = String(email || "").trim().toLowerCase();
     if (!normalizedEmail || !senha) throw new Error("Email e senha são obrigatórios");
 
     const existing = await prisma.usuario.findUnique({ where: { email: normalizedEmail } });
+    if (existing) throw new Error("Email já cadastrado");
 
-    const activationToken = generateCryptoToken();
-    const activationHash = hashToken(activationToken);
-    const activationExpires = new Date(Date.now() + 1000 * 60 * 60 * 24); // 24h
+    const hashedPassword = await bcrypt.hash(senha, 12);
+    const user = await prisma.usuario.create({
+      data: {
+        nome,
+        sobrenome,
+        email: normalizedEmail,
+        password: hashedPassword,
+      },
+    });
 
-    let user;
-
-    if (existing) {
-      // se já existe e está ativo, bloqueia
-      if (existing.ativo) throw new Error("Email já cadastrado");
-
-      // se existe mas não está ativo, reenvia token
-      const hashedPassword = await bcrypt.hash(senha, 12);
-      user = await prisma.usuario.update({
-        where: { id: existing.id },
-        data: {
-          password: hashedPassword,
-          nome: existing.nome || nome,
-          sobrenome: existing.sobrenome ?? sobrenome,
-          tokenAtivacaoHash: activationHash,
-          tokenAtivacaoExpiraEm: activationExpires,
-        },
-      });
-    } else {
-      const hashedPassword = await bcrypt.hash(senha, 12);
-      user = await prisma.usuario.create({
-        data: {
-          nome,
-          sobrenome,
-          email: normalizedEmail,
-          password: hashedPassword,
-          ativo: false,
-          tokenAtivacaoHash: activationHash,
-          tokenAtivacaoExpiraEm: activationExpires,
-        },
-      });
-    }
-
-    const link = `${env.frontendUrl}/activate?token=${activationToken}`;
+    // Email opcional (não depende de campos inexistentes no schema)
     await sendEmail(
       normalizedEmail,
-      "Ative sua conta",
-      `<p>Olá ${user.nome},</p><p>Para ativar sua conta, clique no link:</p><p><a href="${link}">${link}</a></p>`
+      "Bem-vindo(a) à nossa loja",
+      `<p>Olá ${user.nome},</p><p>Sua conta foi criada com sucesso. Agora você já pode fazer login.</p>`
     );
 
     await auditLog({
@@ -106,36 +90,16 @@ const authService = {
   },
 
   async activateAccount(token, { ip, userAgent } = {}) {
-    if (!token) throw new Error("Token de ativação inválido");
-    const tokenHash = hashToken(token);
-
-    const user = await prisma.usuario.findFirst({
-      where: {
-        tokenAtivacaoHash: tokenHash,
-        tokenAtivacaoExpiraEm: { gt: new Date() },
-      },
-    });
-
-    if (!user) throw new Error("Token inválido ou expirado");
-
-    const updated = await prisma.usuario.update({
-      where: { id: user.id },
-      data: {
-        ativo: true,
-        ativadoEm: new Date(),
-        tokenAtivacaoHash: null,
-        tokenAtivacaoExpiraEm: null,
-      },
-    });
-
+    // O schema.prisma não possui campos de "ativação".
+    // Mantemos a rota para compatibilidade com o frontend (retorna sucesso).
     await auditLog({
-      acao: "USER_ACTIVATED",
-      usuarioId: updated.id,
+      acao: "USER_ACTIVATE_ROUTE_HIT",
+      usuarioId: null,
       ip,
       userAgent,
+      meta: { hasToken: !!token },
     });
-
-    return { usuario: safeUser(updated) };
+    return { ok: true };
   },
 
   async login({ email, senha }, { redis, ip, userAgent } = {}) {
@@ -166,17 +130,6 @@ const authService = {
       throw new Error("Credenciais inválidas");
     }
 
-    if (!user.ativo) {
-      await auditLog({
-        acao: "LOGIN_FAIL",
-        usuarioId: user.id,
-        ip,
-        userAgent,
-        meta: { reason: "NOT_ACTIVE" },
-      });
-      throw new Error("Conta não ativada");
-    }
-
     const accessToken = signAccessToken({ id: user.id, ehAdmin: !!user.ehAdmin });
     const refreshToken = signRefreshToken({
       id: user.id,
@@ -185,15 +138,6 @@ const authService = {
     });
 
     await saveRefreshToken(redis, user.id, refreshToken);
-
-    await prisma.usuario.update({
-      where: { id: user.id },
-      data: {
-        ultimoLoginEm: new Date(),
-        ultimoLoginIp: ip ? String(ip).slice(0, 191) : null,
-        ultimoLoginUserAgent: userAgent ? String(userAgent).slice(0, 191) : null,
-      },
-    });
 
     await auditLog({
       acao: "LOGIN_SUCCESS",
@@ -261,19 +205,8 @@ const authService = {
       return;
     }
 
-    const token = generateCryptoToken();
-    const tokenHash = hashToken(token);
-    const expires = new Date(Date.now() + 1000 * 60 * 15); // 15min
-
-    await prisma.usuario.update({
-      where: { id: user.id },
-      data: {
-        resetPasswordTokenHash: tokenHash,
-        resetPasswordExpiraEm: expires,
-      },
-    });
-
-    const link = `${env.frontendUrl}/reset-password?token=${token}`;
+    const token = signPasswordResetToken(user.id);
+    const link = `${env.frontendUrl}/reset-password?token=${encodeURIComponent(token)}`;
     await sendEmail(
       normalizedEmail,
       "Redefinição de senha",
@@ -290,15 +223,9 @@ const authService = {
 
   async resetPassword({ token, senha }, { ip, userAgent } = {}) {
     if (!token || !senha) throw new Error("Token e senha são obrigatórios");
-
-    const tokenHash = hashToken(token);
-    const user = await prisma.usuario.findFirst({
-      where: {
-        resetPasswordTokenHash: tokenHash,
-        resetPasswordExpiraEm: { gt: new Date() },
-      },
-    });
-
+    const decoded = verifyPasswordResetToken(token);
+    const userId = Number(decoded.id);
+    const user = await prisma.usuario.findUnique({ where: { id: userId } });
     if (!user) throw new Error("Token inválido ou expirado");
 
     const hashedPassword = await bcrypt.hash(senha, 12);
@@ -306,8 +233,6 @@ const authService = {
       where: { id: user.id },
       data: {
         password: hashedPassword,
-        resetPasswordTokenHash: null,
-        resetPasswordExpiraEm: null,
       },
     });
 

@@ -1,4 +1,4 @@
-import { prisma } from "../lib/prisma.js"
+import { prisma } from "../config/prisma.js"
 
 export async function checkoutService({
   usuarioId,
@@ -52,7 +52,8 @@ export async function checkoutService({
     const compra = await tx.compra.create({
       data: {
         compradorId: usuarioId,
-        total,
+        // Decimal: usar string para evitar inconsistências de ponto flutuante
+        total: total.toFixed(2),
         status: "PENDENTE"
       }
     })
@@ -106,7 +107,7 @@ export async function checkoutService({
     await tx.pagamento.create({
       data: {
         compraId: compra.id,
-        valor: total,
+        valor: total.toFixed(2),
         status: "PENDENTE",
         metodo: metodoPagamento
       }
