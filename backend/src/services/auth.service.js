@@ -16,14 +16,7 @@ function safeUser(user) {
   if (!user) return null;
   // remove campos sensíveis
   // eslint-disable-next-line no-unused-vars
-  const {
-    password,
-    tokenAtivacaoHash,
-    tokenAtivacaoExpiraEm,
-    resetPasswordTokenHash,
-    resetPasswordExpiraEm,
-    ...rest
-  } = user;
+  const { password, ...rest } = user;
   return rest;
 }
 
@@ -43,56 +36,85 @@ async function deleteRefreshToken(redis, userId) {
   await redis.del(`refresh:${userId}`);
 }
 
+function activationEnabled(redis) {
+  return !!(redis && redis.isOpen);
+}
+
+async function isActivated(redis, userId) {
+  if (!activationEnabled(redis)) return true; // sem redis: não bloqueia login
+  const v = await redis.get(`user:activated:${userId}`);
+  // compat: se não existe (usuários antigos), considera ativo
+  if (v == null) return true;
+  return v === "1";
+}
+
+async function setActivated(redis, userId, value) {
+  if (!activationEnabled(redis)) return;
+  await redis.set(`user:activated:${userId}`, value ? "1" : "0");
+}
+
+async function createOneTimeToken(redis, keyPrefix, userId, ttlSeconds) {
+  const token = generateCryptoToken();
+  const tokenHash = hashToken(token);
+  if (redis?.isOpen) {
+    await redis.set(`${keyPrefix}:${tokenHash}`, String(userId), { EX: ttlSeconds });
+  }
+  return token;
+}
+
+async function consumeOneTimeToken(redis, keyPrefix, token) {
+  if (!redis?.isOpen) return null;
+  const tokenHash = hashToken(token);
+  const key = `${keyPrefix}:${tokenHash}`;
+  const userId = await redis.get(key);
+  if (!userId) return null;
+  await redis.del(key);
+  return Number(userId);
+}
+
 const authService = {
-  async register({ email, senha, nome = "Usuário", sobrenome = null }, { ip, userAgent } = {}) {
+  async register(
+    { email, senha, nome = "Usuário", sobrenome = null },
+    { redis, ip, userAgent } = {}
+  ) {
     const normalizedEmail = String(email || "").trim().toLowerCase();
     if (!normalizedEmail || !senha) throw new Error("Email e senha são obrigatórios");
 
     const existing = await prisma.usuario.findUnique({ where: { email: normalizedEmail } });
+    if (existing) throw new Error("Email já cadastrado");
 
-    const activationToken = generateCryptoToken();
-    const activationHash = hashToken(activationToken);
-    const activationExpires = new Date(Date.now() + 1000 * 60 * 60 * 24); // 24h
+    const hashedPassword = await bcrypt.hash(senha, 12);
+    const user = await prisma.usuario.create({
+      data: {
+        nome,
+        sobrenome,
+        email: normalizedEmail,
+        password: hashedPassword,
+      },
+    });
 
-    let user;
+    const activationRequired = activationEnabled(redis);
+    let activationToken = null;
 
-    if (existing) {
-      // se já existe e está ativo, bloqueia
-      if (existing.ativo) throw new Error("Email já cadastrado");
+    if (activationRequired) {
+      // conta começa "não ativada" via Redis (sem mudar schema)
+      await setActivated(redis, user.id, false);
+      activationToken = await createOneTimeToken(redis, "activate", user.id, 60 * 60 * 24);
 
-      // se existe mas não está ativo, reenvia token
-      const hashedPassword = await bcrypt.hash(senha, 12);
-      user = await prisma.usuario.update({
-        where: { id: existing.id },
-        data: {
-          password: hashedPassword,
-          nome: existing.nome || nome,
-          sobrenome: existing.sobrenome ?? sobrenome,
-          tokenAtivacaoHash: activationHash,
-          tokenAtivacaoExpiraEm: activationExpires,
-        },
-      });
+      const link = `${env.frontendUrl}/activate?token=${activationToken}`;
+      await sendEmail(
+        normalizedEmail,
+        "Ative sua conta",
+        `<p>Olá ${user.nome},</p><p>Para ativar sua conta, clique no link:</p><p><a href="${link}">${link}</a></p>`
+      );
     } else {
-      const hashedPassword = await bcrypt.hash(senha, 12);
-      user = await prisma.usuario.create({
-        data: {
-          nome,
-          sobrenome,
-          email: normalizedEmail,
-          password: hashedPassword,
-          ativo: false,
-          tokenAtivacaoHash: activationHash,
-          tokenAtivacaoExpiraEm: activationExpires,
-        },
-      });
+      // sem redis/email: não bloqueia o fluxo
+      await sendEmail(
+        normalizedEmail,
+        "Bem-vindo(a)!",
+        `<p>Olá ${user.nome},</p><p>Sua conta foi criada com sucesso.</p>`
+      );
     }
-
-    const link = `${env.frontendUrl}/activate?token=${activationToken}`;
-    await sendEmail(
-      normalizedEmail,
-      "Ative sua conta",
-      `<p>Olá ${user.nome},</p><p>Para ativar sua conta, clique no link:</p><p><a href="${link}">${link}</a></p>`
-    );
 
     await auditLog({
       acao: "USER_REGISTER",
@@ -102,31 +124,28 @@ const authService = {
       meta: { email: normalizedEmail },
     });
 
-    return { usuario: safeUser(user) };
+    return {
+      usuario: safeUser(user),
+      activationRequired,
+      // útil para dev quando email não está configurado (transporter null imprime no console)
+      ...(activationToken ? { activationToken } : {}),
+    };
   },
 
-  async activateAccount(token, { ip, userAgent } = {}) {
+  async activateAccount(token, { redis, ip, userAgent } = {}) {
     if (!token) throw new Error("Token de ativação inválido");
-    const tokenHash = hashToken(token);
+    if (!activationEnabled(redis)) {
+      // Sem Redis não existe estado de ativação; não bloqueamos login
+      return { usuario: null };
+    }
 
-    const user = await prisma.usuario.findFirst({
-      where: {
-        tokenAtivacaoHash: tokenHash,
-        tokenAtivacaoExpiraEm: { gt: new Date() },
-      },
-    });
+    const userId = await consumeOneTimeToken(redis, "activate", token);
+    if (!userId) throw new Error("Token inválido ou expirado");
 
-    if (!user) throw new Error("Token inválido ou expirado");
+    await setActivated(redis, userId, true);
 
-    const updated = await prisma.usuario.update({
-      where: { id: user.id },
-      data: {
-        ativo: true,
-        ativadoEm: new Date(),
-        tokenAtivacaoHash: null,
-        tokenAtivacaoExpiraEm: null,
-      },
-    });
+    const updated = await prisma.usuario.findUnique({ where: { id: Number(userId) } });
+    if (!updated) throw new Error("Usuário não encontrado");
 
     await auditLog({
       acao: "USER_ACTIVATED",
@@ -166,7 +185,15 @@ const authService = {
       throw new Error("Credenciais inválidas");
     }
 
-    if (!user.ativo) {
+    // bloqueio por desativação (sem schema)
+    if (redis?.isOpen) {
+      const disabled = await redis.get(`user:disabled:${user.id}`);
+      if (disabled) throw new Error("Conta desativada");
+    }
+
+    // ativação via Redis (se habilitada)
+    const activated = await isActivated(redis, user.id);
+    if (!activated) {
       await auditLog({
         acao: "LOGIN_FAIL",
         usuarioId: user.id,
@@ -185,15 +212,6 @@ const authService = {
     });
 
     await saveRefreshToken(redis, user.id, refreshToken);
-
-    await prisma.usuario.update({
-      where: { id: user.id },
-      data: {
-        ultimoLoginEm: new Date(),
-        ultimoLoginIp: ip ? String(ip).slice(0, 191) : null,
-        ultimoLoginUserAgent: userAgent ? String(userAgent).slice(0, 191) : null,
-      },
-    });
 
     await auditLog({
       acao: "LOGIN_SUCCESS",
@@ -243,7 +261,7 @@ const authService = {
     await auditLog({ acao: "LOGOUT", usuarioId: userId, ip, userAgent });
   },
 
-  async requestPasswordReset(email, { ip, userAgent } = {}) {
+  async requestPasswordReset(email, { redis, ip, userAgent } = {}) {
     const normalizedEmail = String(email || "").trim().toLowerCase();
     if (!normalizedEmail) throw new Error("Email é obrigatório");
 
@@ -261,17 +279,19 @@ const authService = {
       return;
     }
 
-    const token = generateCryptoToken();
-    const tokenHash = hashToken(token);
-    const expires = new Date(Date.now() + 1000 * 60 * 15); // 15min
+    if (!redis?.isOpen) {
+      // sem redis não temos onde guardar o token de reset sem mudar schema
+      await auditLog({
+        acao: "PASSWORD_RESET_REQUEST",
+        usuarioId: user.id,
+        ip,
+        userAgent,
+        meta: { email: normalizedEmail, result: "REDIS_OFF" },
+      });
+      return;
+    }
 
-    await prisma.usuario.update({
-      where: { id: user.id },
-      data: {
-        resetPasswordTokenHash: tokenHash,
-        resetPasswordExpiraEm: expires,
-      },
-    });
+    const token = await createOneTimeToken(redis, "pwdreset", user.id, 60 * 15);
 
     const link = `${env.frontendUrl}/reset-password?token=${token}`;
     await sendEmail(
@@ -288,32 +308,24 @@ const authService = {
     });
   },
 
-  async resetPassword({ token, senha }, { ip, userAgent } = {}) {
+  async resetPassword({ token, senha }, { redis, ip, userAgent } = {}) {
     if (!token || !senha) throw new Error("Token e senha são obrigatórios");
+    if (!redis?.isOpen) throw new Error("Recurso indisponível (Redis não configurado)");
 
-    const tokenHash = hashToken(token);
-    const user = await prisma.usuario.findFirst({
-      where: {
-        resetPasswordTokenHash: tokenHash,
-        resetPasswordExpiraEm: { gt: new Date() },
-      },
-    });
-
-    if (!user) throw new Error("Token inválido ou expirado");
+    const userId = await consumeOneTimeToken(redis, "pwdreset", token);
+    if (!userId) throw new Error("Token inválido ou expirado");
 
     const hashedPassword = await bcrypt.hash(senha, 12);
     await prisma.usuario.update({
-      where: { id: user.id },
+      where: { id: Number(userId) },
       data: {
         password: hashedPassword,
-        resetPasswordTokenHash: null,
-        resetPasswordExpiraEm: null,
       },
     });
 
     await auditLog({
       acao: "PASSWORD_RESET_SUCCESS",
-      usuarioId: user.id,
+      usuarioId: userId,
       ip,
       userAgent,
     });

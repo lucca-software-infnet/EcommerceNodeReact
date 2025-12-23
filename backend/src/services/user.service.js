@@ -12,11 +12,6 @@ const safeSelect = {
   celular: true,
   dataNascimento: true,
   dataRegistro: true,
-  ativo: true,
-  ativadoEm: true,
-  ultimoLoginEm: true,
-  ultimoLoginIp: true,
-  ultimoLoginUserAgent: true,
 };
 
 class UserService {
@@ -42,6 +37,7 @@ class UserService {
     const allowed = {
       nome: data.nome,
       sobrenome: data.sobrenome,
+      cpf: data.cpf,
       sexo: data.sexo,
       celular: data.celular,
       dataNascimento: data.dataNascimento
@@ -67,19 +63,37 @@ class UserService {
 
 
   async update(id, data) {
+    // admin: restringe update aos campos existentes no schema
+    const allowed = {
+      imagem: data.imagem,
+      nome: data.nome,
+      sobrenome: data.sobrenome,
+      email: data.email ? String(data.email).trim().toLowerCase() : undefined,
+      ehAdmin: typeof data.ehAdmin === "boolean" ? data.ehAdmin : undefined,
+      cpf: data.cpf,
+      sexo: data.sexo,
+      celular: data.celular,
+      dataNascimento: data.dataNascimento
+        ? new Date(data.dataNascimento)
+        : undefined,
+    };
+
     return prisma.usuario.update({
       where: { id: Number(id) },
-      data,
+      data: allowed,
       select: safeSelect,
     });
   }
 
-  async deactivate(id) {
-    return prisma.usuario.update({
-      where: { id: Number(id) },
-      data: { ativo: false },
-      select: safeSelect,
-    });
+  // Desativação sem mudar schema: flag no Redis (consumida pelo auth.middleware)
+  async deactivate(id, { redis } = {}) {
+    if (!redis || !redis.isOpen) {
+      throw new Error("Redis não configurado para desativação de conta");
+    }
+    const userId = Number(id);
+    if (!Number.isFinite(userId)) throw new Error("ID inválido");
+    await redis.set(`user:disabled:${userId}`, "1");
+    return { id: userId, disabled: true };
   }
 
   async delete(id) {
