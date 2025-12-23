@@ -4,11 +4,17 @@ import { fileTypeFromBuffer } from "file-type";
 
 /**
  * Upload seguro de imagem
+ * @param {Object} options
+ * @param {Buffer} options.buffer - Buffer da imagem
+ * @param {string} options.uploadDir - Diretório de destino
+ * @param {string} options.filename - Nome do arquivo
+ * @param {boolean} options.overwrite - Se deve sobrescrever arquivo existente (default: false)
  */
 export async function saveImage({
   buffer,
   uploadDir,
-  filename
+  filename,
+  overwrite = false
 }) {
   const resolvedDir = path.resolve(uploadDir);
 
@@ -31,8 +37,13 @@ export async function saveImage({
     throw new Error("Path inválido");
   }
 
+  // Remove arquivo existente se overwrite for true
+  if (overwrite && fs.existsSync(finalPath)) {
+    await fs.promises.unlink(finalPath);
+  }
+
   await fs.promises.writeFile(finalPath, buffer, {
-    flag: "wx" // não sobrescreve
+    flag: overwrite ? "w" : "wx"
   });
 
   return {

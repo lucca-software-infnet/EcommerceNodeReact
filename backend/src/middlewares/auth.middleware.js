@@ -9,7 +9,8 @@ export default async function authMiddleware(req, reply) {
     if (!token) return reply.code(401).send({ erro: "Token não enviado" });
 
     const decoded = verifyAccessToken(token);
-    req.user = { userId: decoded.id, ehAdmin: !!decoded.ehAdmin };
+    // Standardized: using `id` consistently across all controllers/routes
+    req.user = { id: decoded.id, ehAdmin: !!decoded.ehAdmin };
   } catch (_err) {
     return reply.code(401).send({ erro: "Token inválido" });
   }

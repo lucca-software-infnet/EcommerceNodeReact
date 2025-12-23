@@ -1,5 +1,8 @@
+import { confirmarPagamento, cancelarPagamento } from "../services/pagamento.service.js"
+
 export async function pagamentoRoutes(app) {
 
+  // Webhook para receber notificações de pagamento (gateway externo)
   app.post("/pagamentos/webhook", async (request, reply) => {
 
     const { compraId, status } = request.body

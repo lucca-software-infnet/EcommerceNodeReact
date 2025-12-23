@@ -96,7 +96,8 @@ class UserController {
       await saveImage({
         buffer,
         uploadDir,
-        filename
+        filename,
+        overwrite: true  // Avatar pode ser atualizado
       });
 
       const usuario = await userService.updateAvatar(userId, `/uploads/users/${filename}`);

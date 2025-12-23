@@ -1,7 +1,9 @@
+import authMiddleware from "../middlewares/auth.middleware.js"
+
 export async function vendasRoutes(app) {
 
   app.get("/vendedor/vendas", {
-    preHandler: [app.authenticate]
+    preHandler: authMiddleware
   }, async (request, reply) => {
 
     const vendedorId = request.user.id

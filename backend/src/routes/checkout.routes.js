@@ -1,9 +1,10 @@
 import { checkoutService } from "../services/checkout.service.js"
+import authMiddleware from "../middlewares/auth.middleware.js"
 
 export async function checkoutRoutes(app) {
 
   app.post("/checkout", {
-    preHandler: [app.authenticate]
+    preHandler: authMiddleware
   }, async (request, reply) => {
 
     const usuarioId = request.user.id

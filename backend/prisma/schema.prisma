@@ -23,11 +23,23 @@ model Usuario {
   dataNascimento DateTime?
   dataRegistro   DateTime  @default(now())
 
-  enderecos      Endereco[]
-  produtos       Produto[]
-  compras        Compra[]  @relation("CompradorCompras")
+  // Campos de autenticação
+  ativo                   Boolean   @default(false)
+  ativadoEm               DateTime?
+  tokenAtivacaoHash       String?
+  tokenAtivacaoExpiraEm   DateTime?
+  resetPasswordTokenHash  String?
+  resetPasswordExpiraEm   DateTime?
+  ultimoLoginEm           DateTime?
+  ultimoLoginIp           String?
+  ultimoLoginUserAgent    String?
+
+  enderecos        Endereco[]
+  produtos         Produto[]
+  compras          Compra[]     @relation("CompradorCompras")
   produtosVendidos CompraItem[] @relation("VendedorItems")
-  carrinho       Carrinho?
+  carrinho         Carrinho?
+  auditLogs        AuditLog[]
 }
 
 /* =========================
@@ -67,9 +79,10 @@ model Produto {
   vendedorId   Int
   vendedor     Usuario   @relation(fields: [vendedorId], references: [id])
 
-  imagens        ImagemProduto[]
-  itensCarrinho ItemCarrinho[]
-  compraItems   CompraItem[]
+  imagens           ImagemProduto[]
+  itensCarrinho     ItemCarrinho[]
+  compraItems       CompraItem[]
+  movimentosEstoque EstoqueMovimento[]
 }
 
 /* =========================
@@ -184,4 +197,21 @@ model EstoqueMovimento {
 
   produtoId  Int
   produto    Produto  @relation(fields: [produtoId], references: [id])
+}
+
+/* =========================
+   AUDITORIA
+========================= */
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  acao      String
+  usuarioId Int?
+  ip        String?
+  userAgent String?
+  meta      Json?
+  criadoEm  DateTime @default(now())
+
+  usuario   Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+
+  @@index([usuarioId, criadoEm])
 }

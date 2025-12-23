@@ -1,7 +1,10 @@
+import authMiddleware from "../middlewares/auth.middleware.js"
+
 export async function pedidosRoutes(app) {
 
+  // Listar todos os pedidos do usuário
   app.get("/me/pedidos", {
-    preHandler: [app.authenticate]
+    preHandler: authMiddleware
   }, async (request, reply) => {
 
     const usuarioId = request.user.id
@@ -30,37 +33,38 @@ export async function pedidosRoutes(app) {
 
     return pedidos
   })
-}
 
-app.get("/me/pedidos/:id", {
-  preHandler: [app.authenticate]
-}, async (request, reply) => {
+  // Buscar pedido específico do usuário
+  app.get("/me/pedidos/:id", {
+    preHandler: authMiddleware
+  }, async (request, reply) => {
 
-  const usuarioId = request.user.id
-  const pedidoId = Number(request.params.id)
+    const usuarioId = request.user.id
+    const pedidoId = Number(request.params.id)
 
-  const pedido = await app.prisma.compra.findFirst({
-    where: {
-      id: pedidoId,
-      compradorId: usuarioId
-    },
-    include: {
-      endereco: true,
-      pagamento: true,
-      itens: {
-        include: {
-          produto: true
+    const pedido = await app.prisma.compra.findFirst({
+      where: {
+        id: pedidoId,
+        compradorId: usuarioId
+      },
+      include: {
+        endereco: true,
+        pagamento: true,
+        itens: {
+          include: {
+            produto: true
+          }
         }
       }
+    })
+
+    if (!pedido) {
+      return reply.code(404).send({ error: "Pedido não encontrado" })
     }
+
+    return pedido
   })
-
-  if (!pedido) {
-    return reply.code(404).send({ error: "Pedido não encontrado" })
-  }
-
-  return pedido
-})
+}
 
 
 

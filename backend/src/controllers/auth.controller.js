@@ -100,7 +100,7 @@ class AuthController {
 
   async logout(req, reply) {
     try {
-      const userId = req.user?.userId;
+      const userId = req.user?.id;
       await authService.logout(userId, {
         redis: req.server.redis,
         ...getContext(req),

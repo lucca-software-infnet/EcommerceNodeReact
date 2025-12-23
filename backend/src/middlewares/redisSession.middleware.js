@@ -1,5 +1,5 @@
-import redis from "../services/redis.service.js"
-import jwt from "jsonwebtoken"
+import { redis } from "../config/redis.js"
+import { verifyAccessToken } from "../utils/jwtTokens.js"
 
 export default async function redisSession(req, reply) {
   try {
@@ -9,14 +9,20 @@ export default async function redisSession(req, reply) {
 
     const token = authHeader.split(" ")[1]
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET)
+    const decoded = verifyAccessToken(token)
+
+    if (!redis || !redis.isOpen) {
+      // Redis not available, continue without session check
+      req.user = { id: decoded.id, ehAdmin: !!decoded.ehAdmin }
+      return
+    }
 
     const exists = await redis.get(`session:${decoded.id}`)
 
     if (!exists)
       return reply.code(401).send({ erro: "Sessão expirada ou inválida" })
 
-    req.user = { userId: decoded.id }
+    req.user = { id: decoded.id, ehAdmin: !!decoded.ehAdmin }
 
   } catch (err) {
     return reply.code(401).send({ erro: "Sessão inválida" })
