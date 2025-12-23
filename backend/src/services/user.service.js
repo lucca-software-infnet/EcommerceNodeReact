@@ -40,12 +40,13 @@ class UserService {
 
   async updateMe(userId, data) {
     const allowed = {
-      imagem: data.imagem,
       nome: data.nome,
       sobrenome: data.sobrenome,
       sexo: data.sexo,
       celular: data.celular,
-      dataNascimento: data.dataNascimento ? new Date(data.dataNascimento) : undefined,
+      dataNascimento: data.dataNascimento
+        ? new Date(data.dataNascimento)
+        : undefined,
     };
 
     return prisma.usuario.update({
@@ -54,6 +55,16 @@ class UserService {
       select: safeSelect,
     });
   }
+
+  async updateAvatar(userId, imagem) {
+    return prisma.usuario.update({
+      where: { id: Number(userId) },
+      data: { imagem },
+      select: safeSelect,
+    });
+  }
+
+
 
   async update(id, data) {
     return prisma.usuario.update({
