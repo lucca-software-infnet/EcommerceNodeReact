@@ -14,11 +14,10 @@ import { env } from "./config/env.js";
 import { redis } from "./config/redis.js";
 import { prisma } from "./config/prisma.js";
 
-import authRoutes from "./routes/auth.routes.js";
-import userRoutes from "./routes/user.routes.js";
-import produtoRoutes from "./routes/produto.routes.js";
+import routes from "./routes/index.js";
 
 import errorMiddleware from "./middlewares/error.middleware.js";
+import authMiddleware from "./middlewares/auth.middleware.js";
 
 dotenv.config();
 
@@ -48,6 +47,8 @@ try {
 
 app.decorate("redis", redis);
 app.decorate("prisma", prisma);
+// compat: algumas rotas antigas usam app.authenticate
+app.decorate("authenticate", authMiddleware);
 
 /* =========================
    PLUGINS
@@ -72,18 +73,10 @@ await app.register(fastifyStatic, {
   prefix: "/uploads/"
 });
 
-await app.register(fastifyStatic, {
-  root: path.resolve("uploads"),
-  prefix: "/uploads/",
-  decorateReply: false,
-  setHeaders(res) {
-    res.setHeader("X-Content-Type-Options", "nosniff");
-  }
+// hardening headers
+app.addHook("onSend", async (_req, reply) => {
+  reply.header("X-Content-Type-Options", "nosniff");
 });
-
-
-
-
 /* =========================
    HEALTHCHECK
 ========================= */
@@ -92,9 +85,7 @@ app.get("/health", async () => ({ ok: true }));
 /* =========================
    ROTAS
 ========================= */
-app.register(authRoutes, { prefix: "/api" });
-app.register(userRoutes, { prefix: "/api" });
-app.register(produtoRoutes, { prefix: "/api" });
+app.register(routes, { prefix: "/api" });
 
 
 /* =========================

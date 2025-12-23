@@ -96,7 +96,8 @@ class UserController {
       await saveImage({
         buffer,
         uploadDir,
-        filename
+        filename,
+        overwrite: true,
       });
 
       const usuario = await userService.updateAvatar(userId, `/uploads/users/${filename}`);
@@ -116,8 +117,10 @@ class UserController {
         return reply.code(403).send({ erro: "Acesso negado" });
       }
 
-      await userService.deactivate(Number(req.params.id));
-      return reply.send({ msg: "Usuário desativado" });
+      const result = await userService.deactivate(Number(req.params.id), {
+        redis: req.server.redis,
+      });
+      return reply.send({ msg: "Usuário desativado", ...result });
 
     } catch (err) {
       return reply.code(400).send({ erro: err.message });

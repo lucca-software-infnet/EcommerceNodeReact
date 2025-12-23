@@ -8,7 +8,8 @@ import { fileTypeFromBuffer } from "file-type";
 export async function saveImage({
   buffer,
   uploadDir,
-  filename
+  filename,
+  overwrite = false,
 }) {
   const resolvedDir = path.resolve(uploadDir);
 
@@ -32,7 +33,7 @@ export async function saveImage({
   }
 
   await fs.promises.writeFile(finalPath, buffer, {
-    flag: "wx" // não sobrescreve
+    flag: overwrite ? "w" : "wx", // sobrescreve somente quando permitido
   });
 
   return {

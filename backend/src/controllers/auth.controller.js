@@ -14,11 +14,16 @@ class AuthController {
       const { email, senha, nome, sobrenome } = req.body || {};
       const result = await authService.register(
         { email, senha, nome, sobrenome },
-        getContext(req)
+        {
+          redis: req.server.redis,
+          ...getContext(req),
+        }
       );
 
       return reply.code(201).send({
-        msg: "Usuário registrado. Verifique seu e-mail para ativar a conta.",
+        msg: result?.activationRequired
+          ? "Usuário registrado. Verifique seu e-mail para ativar a conta."
+          : "Usuário registrado com sucesso.",
         ...result,
       });
     } catch (err) {
@@ -29,7 +34,10 @@ class AuthController {
   async activate(req, reply) {
     try {
       const token = req.query?.token;
-      const result = await authService.activateAccount(token, getContext(req));
+      const result = await authService.activateAccount(token, {
+        redis: req.server.redis,
+        ...getContext(req),
+      });
       return reply.send({ msg: "Conta ativada com sucesso", ...result });
     } catch (err) {
       return reply.code(400).send({ erro: err.message });
@@ -79,7 +87,10 @@ class AuthController {
   async requestPassword(req, reply) {
     try {
       const { email } = req.body || {};
-      await authService.requestPasswordReset(email, getContext(req));
+      await authService.requestPasswordReset(email, {
+        redis: req.server.redis,
+        ...getContext(req),
+      });
       return reply.send({
         msg: "Se o e-mail existir, enviaremos um link de redefinição.",
       });
@@ -91,7 +102,10 @@ class AuthController {
   async resetPassword(req, reply) {
     try {
       const { token, senha } = req.body || {};
-      await authService.resetPassword({ token, senha }, getContext(req));
+      await authService.resetPassword(
+        { token, senha },
+        { redis: req.server.redis, ...getContext(req) }
+      );
       return reply.send({ msg: "Senha atualizada" });
     } catch (err) {
       return reply.code(400).send({ erro: err.message });
@@ -100,7 +114,7 @@ class AuthController {
 
   async logout(req, reply) {
     try {
-      const userId = req.user?.userId;
+      const userId = req.user?.id;
       await authService.logout(userId, {
         redis: req.server.redis,
         ...getContext(req),

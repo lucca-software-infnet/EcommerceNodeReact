@@ -1,12 +1,18 @@
+import { confirmarPagamento, cancelarPagamento } from "../services/pagamento.service.js"
+
 export async function pagamentoRoutes(app) {
 
   app.post("/pagamentos/webhook", async (request, reply) => {
 
     const { compraId, status } = request.body
     // status: APROVADO | RECUSADO
+    const compraIdNum = Number(compraId)
+    if (!Number.isFinite(compraIdNum) || !status) {
+      return reply.code(400).send({ error: "Payload inválido" })
+    }
 
     const compra = await app.prisma.compra.findUnique({
-      where: { id: compraId },
+      where: { id: compraIdNum },
       include: { pagamento: true }
     })
 
@@ -19,9 +25,9 @@ export async function pagamentoRoutes(app) {
     }
 
     if (status === "APROVADO") {
-      await confirmarPagamento(compraId)
+      await confirmarPagamento(compraIdNum)
     } else {
-      await cancelarPagamento(compraId)
+      await cancelarPagamento(compraIdNum)
     }
 
     return { ok: true }
