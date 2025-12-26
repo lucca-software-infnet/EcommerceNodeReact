@@ -1,28 +1,25 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { api } from "../api/client";
+import { useAuth } from "../contexts/authContext.js";
 
 export default function ResetPassword() {
   const [params] = useSearchParams();
   const token = params.get("token") || "";
+  const { resetPassword, isBusy } = useAuth();
 
   const [senha, setSenha] = useState("");
   const [msg, setMsg] = useState("");
   const [erro, setErro] = useState("");
-  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErro("");
     setMsg("");
-    setLoading(true);
     try {
-      const res = await api.post("/auth/password/reset", { token, senha });
-      setMsg(res.data?.msg || "Senha atualizada com sucesso.");
+      const res = await resetPassword({ token, senha });
+      setMsg(res?.msg || "Senha atualizada com sucesso.");
     } catch (err) {
-      setErro(err?.response?.data?.erro || "Falha ao redefinir senha");
-    } finally {
-      setLoading(false);
+      setErro(err?.message || "Falha ao redefinir senha");
     }
   };
 
@@ -42,6 +39,7 @@ export default function ResetPassword() {
               type="password"
               value={senha}
               required
+              autoComplete="new-password"
               onChange={(e) => setSenha(e.target.value)}
               style={{ display: "block", width: "100%", margin: "6px 0 12px" }}
             />
@@ -50,8 +48,8 @@ export default function ResetPassword() {
           {erro ? <p style={{ color: "crimson" }}>{erro}</p> : null}
           {msg ? <p style={{ color: "green" }}>{msg}</p> : null}
 
-          <button type="submit" disabled={loading} style={{ width: "100%" }}>
-            {loading ? "Salvando..." : "Atualizar senha"}
+          <button type="submit" disabled={isBusy} style={{ width: "100%" }}>
+            {isBusy ? "Salvando..." : "Atualizar senha"}
           </button>
         </form>
       )}

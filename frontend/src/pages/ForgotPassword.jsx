@@ -1,26 +1,23 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { api } from "../api/client.js";
+import { useAuth } from "../contexts/authContext.js";
 import "../styles/ForgotPassword.css";
 
 export default function ForgotPassword() {
+  const { forgotPassword, isBusy } = useAuth();
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [erro, setErro] = useState("");
-  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErro("");
     setMessage("");
-    setLoading(true);
     try {
-      await api.post("/auth/forgot-password", { email });
+      await forgotPassword({ email });
       setMessage("Email enviado com sucesso! Verifique sua caixa de entrada.");
     } catch (err) {
-      setErro(err?.response?.data?.erro || "Falha ao enviar email");
-    } finally {
-      setLoading(false);
+      setErro(err?.message || "Falha ao enviar email");
     }
   };
 
@@ -37,6 +34,7 @@ export default function ForgotPassword() {
               placeholder="Digite seu e-mail"
               value={email}
               required
+              autoComplete="email"
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
@@ -44,8 +42,8 @@ export default function ForgotPassword() {
           {erro && <p className="forgot-error">{erro}</p>}
           {message && <p className="forgot-success">{message}</p>}
 
-          <button type="submit" className="forgot-button" disabled={loading}>
-            {loading ? "Enviando..." : "Enviar email"}
+          <button type="submit" className="forgot-button" disabled={isBusy}>
+            {isBusy ? "Enviando..." : "Enviar email"}
           </button>
         </form>
 
