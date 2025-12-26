@@ -1,27 +1,23 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { api } from "../api/client";
+import { useAuth } from "../contexts/auth.js";
 
 export default function Activate() {
+  const { activate, lastError } = useAuth();
   const [params] = useSearchParams();
   const token = params.get("token");
-  const [msg, setMsg] = useState("Ativando...");
-  const [erro, setErro] = useState("");
+  const [msg, setMsg] = useState(token ? "Ativando..." : "");
+  const [erro, setErro] = useState(token ? "" : "Token não informado");
 
   useEffect(() => {
-    if (!token) {
-      setErro("Token não informado");
-      setMsg("");
-      return;
-    }
-    api
-      .get("/auth/activate", { params: { token } })
-      .then(() => setMsg("Conta ativada com sucesso!"))
-      .catch((err) => {
-        setErro(err?.response?.data?.erro || "Falha ao ativar conta");
+    if (!token) return;
+    activate(token)
+      .then((res) => setMsg(res?.msg || "Conta ativada com sucesso!"))
+      .catch(() => {
+        setErro(lastError || "Falha ao ativar conta");
         setMsg("");
       });
-  }, [token]);
+  }, [token, activate, lastError]);
 
   return (
     <div style={{ maxWidth: 520, margin: "40px auto" }}>

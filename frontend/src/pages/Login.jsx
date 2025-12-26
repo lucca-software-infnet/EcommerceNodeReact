@@ -1,30 +1,35 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { api } from "../src/api/client.js";
-import "../src/styles/Login.css";
-
+import { useEffect, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/auth.js";
+import "../styles/Login.css";
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { login, isAuthenticated, isBusy, lastError } = useAuth();
+
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
-  const [erro, setErro] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [erroLocal, setErroLocal] = useState("");
+
+  useEffect(() => {
+    if (isAuthenticated) navigate("/me", { replace: true });
+  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setErro("");
-    setLoading(true);
+    setErroLocal("");
     try {
-      const res = await api.post("/auth/login", { email, senha });
-      localStorage.setItem("accessToken", res.data.accessToken);
-      navigate("/me");
-    } catch (err) {
-      setErro(err?.response?.data?.erro || "Falha no login");
-    } finally {
-      setLoading(false);
+      await login({ email, senha });
+      const to = location.state?.from?.pathname || "/me";
+      navigate(to, { replace: true });
+    } catch {
+      // mensagem já vem do contexto, mas mantemos compat com UI atual
+      setErroLocal(lastError || "Falha no login");
     }
   };
+
+  const erro = erroLocal || lastError;
 
   return (
     <div className="login-wrapper">
@@ -39,6 +44,7 @@ export default function Login() {
               value={email}
               required
               onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
             />
           </div>
 
@@ -50,13 +56,14 @@ export default function Login() {
               value={senha}
               required
               onChange={(e) => setSenha(e.target.value)}
+              autoComplete="current-password"
             />
           </div>
 
-          {erro && <p className="error-message">{erro}</p>}
+          {erro ? <p className="error-message">{erro}</p> : null}
 
-          <button type="submit" disabled={loading}>
-            {loading ? "Entrando..." : "Entrar"}
+          <button type="submit" disabled={isBusy}>
+            {isBusy ? "Entrando..." : "Entrar"}
           </button>
         </form>
 
@@ -72,3 +79,4 @@ export default function Login() {
     </div>
   );
 }
+
