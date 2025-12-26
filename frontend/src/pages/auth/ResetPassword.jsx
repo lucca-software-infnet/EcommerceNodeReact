@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { useAuth } from "../contexts/auth.js";
+import { useAuth } from "../../contexts/AuthContext.jsx";
 
 export default function ResetPassword() {
   const { resetPassword, isBusy, lastError } = useAuth();
@@ -40,6 +40,7 @@ export default function ResetPassword() {
               value={senha}
               required
               onChange={(e) => setSenha(e.target.value)}
+              autoComplete="new-password"
               style={{ display: "block", width: "100%", margin: "6px 0 12px" }}
             />
           </label>

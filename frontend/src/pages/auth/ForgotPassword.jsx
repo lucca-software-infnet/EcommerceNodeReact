@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useAuth } from "../contexts/auth.js";
-import "../styles/ForgotPassword.css";
+import { useAuth } from "../../contexts/AuthContext.jsx";
+import "../../styles/ForgotPassword.css";
 
 export default function ForgotPassword() {
   const { forgotPassword, isBusy, lastError } = useAuth();
@@ -35,6 +35,7 @@ export default function ForgotPassword() {
               value={email}
               required
               onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
             />
           </div>
 
@@ -55,3 +56,4 @@ export default function ForgotPassword() {
     </div>
   );
 }
+

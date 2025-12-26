@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { useAuth } from "../contexts/auth.js";
+import { useAuth } from "../../contexts/AuthContext.jsx";
 
 export default function Activate() {
   const { activate, lastError } = useAuth();

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../contexts/auth.js";
-import "../styles/ForgotRegister.css";
+import { useAuth } from "../../contexts/AuthContext.jsx";
+import "../../styles/ForgotRegister.css";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -24,7 +24,6 @@ export default function Register() {
     setMsg("");
     try {
       const data = await register({ nome, sobrenome, email, senha });
-      // backend pode exigir ativação (quando Redis está habilitado)
       if (data?.activationRequired) {
         setMsg(
           data?.msg ||

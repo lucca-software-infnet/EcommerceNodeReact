@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "../contexts/auth.js";
-import "../styles/Login.css";
+import { useAuth } from "../../contexts/AuthContext.jsx";
+import "../../styles/Login.css";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -24,7 +24,6 @@ export default function Login() {
       const to = location.state?.from?.pathname || "/me";
       navigate(to, { replace: true });
     } catch {
-      // mensagem já vem do contexto, mas mantemos compat com UI atual
       setErroLocal(lastError || "Falha no login");
     }
   };
