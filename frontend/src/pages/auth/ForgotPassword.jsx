@@ -1,26 +1,23 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { api } from "../api/client.js";
-import "../styles/ForgotPassword.css";
+import { useAuth } from "../../contexts/AuthContext.jsx";
+import "../../styles/ForgotPassword.css";
 
 export default function ForgotPassword() {
+  const { forgotPassword, isBusy, lastError } = useAuth();
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [erro, setErro] = useState("");
-  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErro("");
     setMessage("");
-    setLoading(true);
     try {
-      await api.post("/auth/forgot-password", { email });
-      setMessage("Email enviado com sucesso! Verifique sua caixa de entrada.");
-    } catch (err) {
-      setErro(err?.response?.data?.erro || "Falha ao enviar email");
-    } finally {
-      setLoading(false);
+      const res = await forgotPassword(email);
+      setMessage(res?.msg || "Se o e-mail existir, enviaremos um link de redefinição.");
+    } catch {
+      setErro(lastError || "Falha ao enviar email");
     }
   };
 
@@ -38,14 +35,15 @@ export default function ForgotPassword() {
               value={email}
               required
               onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
             />
           </div>
 
-          {erro && <p className="forgot-error">{erro}</p>}
-          {message && <p className="forgot-success">{message}</p>}
+          {erro ? <p className="forgot-error">{erro}</p> : null}
+          {message ? <p className="forgot-success">{message}</p> : null}
 
-          <button type="submit" className="forgot-button" disabled={loading}>
-            {loading ? "Enviando..." : "Enviar email"}
+          <button type="submit" className="forgot-button" disabled={isBusy}>
+            {isBusy ? "Enviando..." : "Enviar email"}
           </button>
         </form>
 
@@ -58,3 +56,4 @@ export default function ForgotPassword() {
     </div>
   );
 }
+
