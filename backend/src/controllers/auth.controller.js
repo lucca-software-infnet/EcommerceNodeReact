@@ -1,10 +1,26 @@
 import authService from "../services/auth.service.js";
 import { env } from "../config/env.js";
+import { REFRESH_TOKEN_TTL_SECONDS } from "../utils/jwtTokens.js";
 
 function getContext(req) {
   return {
     ip: req.ip,
     userAgent: req.headers["user-agent"],
+  };
+}
+
+function getRefreshCookieOptions() {
+  // Se for cross-site com HTTPS, precisamos SameSite=None.
+  // Em dev (proxy /api) normalmente é first-party e "lax" funciona bem.
+  const sameSite = env.cookieSecure ? "none" : "lax";
+  return {
+    httpOnly: true,
+    secure: env.cookieSecure,
+    sameSite,
+    // Disponibiliza o refresh cookie para todos endpoints de auth,
+    // permitindo logout revogar o token atual do dispositivo.
+    path: "/api/auth",
+    maxAge: REFRESH_TOKEN_TTL_SECONDS,
   };
 }
 
@@ -57,11 +73,7 @@ class AuthController {
 
       // refresh token em cookie httpOnly (mais robusto)
       reply.setCookie("refreshToken", refreshToken, {
-        httpOnly: true,
-        secure: env.cookieSecure,
-        sameSite: "lax",
-        path: "/api/auth/refresh",
-        maxAge: 60 * 60 * 24 * 7,
+        ...getRefreshCookieOptions(),
       });
 
       return reply.send({ accessToken, usuario });
@@ -81,18 +93,14 @@ class AuthController {
       // Se o serviço rotacionar o refresh token, atualiza o cookie httpOnly
       if (result?.refreshToken) {
         reply.setCookie("refreshToken", result.refreshToken, {
-          httpOnly: true,
-          secure: env.cookieSecure,
-          sameSite: "lax",
-          path: "/api/auth/refresh",
-          maxAge: 60 * 60 * 24 * 7,
+          ...getRefreshCookieOptions(),
         });
       }
 
       return reply.send({ accessToken: result?.accessToken });
     } catch (err) {
       // token inválido/ausente: limpa cookie para evitar retries inúteis
-      reply.clearCookie("refreshToken", { path: "/api/auth/refresh" });
+      reply.clearCookie("refreshToken", { path: "/api/auth" });
       return reply.code(401).send({ erro: err.message });
     }
   }
@@ -128,12 +136,14 @@ class AuthController {
   async logout(req, reply) {
     try {
       const userId = req.user?.id;
+      const refreshToken = req.cookies?.refreshToken || null;
       await authService.logout(userId, {
+        refreshToken,
         redis: req.server.redis,
         ...getContext(req),
       });
 
-      reply.clearCookie("refreshToken", { path: "/api/auth/refresh" });
+      reply.clearCookie("refreshToken", { path: "/api/auth" });
       return reply.send({ msg: "Logout realizado" });
     } catch (err) {
       return reply.code(400).send({ erro: err.message });
