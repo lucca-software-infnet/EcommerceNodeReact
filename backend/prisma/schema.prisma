@@ -23,14 +23,54 @@ model Usuario {
   dataNascimento DateTime?
   dataRegistro   DateTime  @default(now())
   emailVerificado Boolean @default(false)
-  ativo            Boolean @default(true)
+  // "ativo" equivale a isActive (requisito): inicia como false e só vira true após ativação
+  ativo            Boolean @default(false)
 
+  activationTokens ActivationToken[]
+  refreshTokens    RefreshToken[]
 
   enderecos      Endereco[]
   produtos       Produto[]
   compras        Compra[]  @relation("CompradorCompras")
   produtosVendidos CompraItem[] @relation("VendedorItems")
   carrinho       Carrinho?
+}
+
+/* =========================
+   ATIVAÇÃO DE CONTA
+========================= */
+model ActivationToken {
+  id        Int      @id @default(autoincrement())
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  usuarioId Int
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+  @@index([expiresAt])
+}
+
+/* =========================
+   REFRESH TOKEN (JWT LONGO)
+   - armazenamos apenas o hash do token
+========================= */
+model RefreshToken {
+  id        Int      @id @default(autoincrement())
+  tokenHash String   @unique
+  jti       String   @unique
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  revokedAt DateTime?
+  replacedByJti String?
+
+  usuarioId Int
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+  @@index([expiresAt])
 }
 
 /* =========================

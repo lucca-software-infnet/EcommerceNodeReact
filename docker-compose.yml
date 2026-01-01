@@ -14,7 +14,10 @@ services:
       - ./backend:/app
       - /app/node_modules
       - ./uploads:/app/uploads
-    command: npm run dev
+    command: >
+      sh -c "until npx prisma migrate deploy; do echo 'waiting for mysql...'; sleep 2; done;
+      npx prisma generate;
+      npm run dev"
 
   redis:
     image: redis:7

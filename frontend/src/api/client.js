@@ -44,6 +44,10 @@ api.interceptors.response.use(
       !!original?.headers?.Authorization || !!original?.headers?.authorization;
     const hadAccessToken = !!getAccessToken();
 
+    // Sem access token/header não existe "sessão" para tentar recuperar via refresh.
+    // Evita chamadas indevidas em /auth/refresh quando o usuário não está logado.
+    if (!hadAuthHeader && !hadAccessToken) throw error;
+
     // Não tenta refresh em cima do próprio refresh (evita loop).
     if (isRefreshRequest(original)) {
       clearSession();
