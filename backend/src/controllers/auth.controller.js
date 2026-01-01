@@ -72,15 +72,27 @@ class AuthController {
 
   async refresh(req, reply) {
     try {
-      const refreshToken =
-        req.cookies?.refreshToken || req.body?.refreshToken || null;
+      // Requisito: refresh token vem do cookie httpOnly
+      const refreshToken = req.cookies?.refreshToken || null;
       const result = await authService.refresh(refreshToken, {
         redis: req.server.redis,
         ...getContext(req),
       });
-      return reply.send(result);
+
+      // Rotação do refresh token (se retornado)
+      if (result?.refreshToken) {
+        reply.setCookie("refreshToken", result.refreshToken, {
+          httpOnly: true,
+          secure: env.cookieSecure,
+          sameSite: "lax",
+          path: "/api/auth/refresh",
+          maxAge: 60 * 60 * 24 * 7,
+        });
+      }
+
+      return reply.send({ accessToken: result?.accessToken });
     } catch (err) {
-      return reply.code(400).send({ erro: err.message });
+      return reply.code(401).send({ erro: err.message });
     }
   }
 

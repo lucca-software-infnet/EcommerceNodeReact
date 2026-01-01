@@ -2,7 +2,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client.js";
-import { clearSession, setAccessToken, subscribeAuthEvents } from "../auth/session.js";
+import { clearSession, getAccessToken, setAccessToken, subscribeAuthEvents } from "../auth/session.js";
 
 function getApiErrorMessage(err, fallback) {
   return err?.response?.data?.erro || fallback || "Ocorreu um erro";
@@ -22,6 +22,11 @@ export function AuthProvider({ children }) {
 
   const loadSession = useCallback(async () => {
     setLastError("");
+    // Requisito: só chamar /users/me se access token existir
+    if (!getAccessToken()) {
+      setUser(null);
+      return;
+    }
     try {
       const res = await api.get("/users/me");
       setUser(res.data || null);

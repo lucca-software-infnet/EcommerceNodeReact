@@ -44,6 +44,11 @@ api.interceptors.response.use(
       !!original?.headers?.Authorization || !!original?.headers?.authorization;
     const hadAccessToken = !!getAccessToken();
 
+    // Requisito: não tentar refresh quando não existe sessão/access token.
+    if (!hadAuthHeader && !hadAccessToken) {
+      throw error;
+    }
+
     // Não tenta refresh em cima do próprio refresh (evita loop).
     if (isRefreshRequest(original)) {
       clearSession();

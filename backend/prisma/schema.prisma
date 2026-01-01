@@ -23,7 +23,7 @@ model Usuario {
   dataNascimento DateTime?
   dataRegistro   DateTime  @default(now())
   emailVerificado Boolean @default(false)
-  ativo            Boolean @default(true)
+  ativo            Boolean @default(false)
 
 
   enderecos      Endereco[]
@@ -31,6 +31,45 @@ model Usuario {
   compras        Compra[]  @relation("CompradorCompras")
   produtosVendidos CompraItem[] @relation("VendedorItems")
   carrinho       Carrinho?
+
+  // Auth (ativação e refresh)
+  activationTokens ActivationToken[]
+  refreshTokens    RefreshToken[]
+}
+
+/* =========================
+   TOKEN DE ATIVAÇÃO (EMAIL)
+========================= */
+model ActivationToken {
+  id        Int      @id @default(autoincrement())
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  userId Int
+  user   Usuario @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+/* =========================
+   REFRESH TOKEN (COOKIE)
+========================= */
+model RefreshToken {
+  id        Int      @id @default(autoincrement())
+  jti       String   @unique
+  tokenHash String   @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+
+  userId Int
+  user   Usuario @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 /* =========================

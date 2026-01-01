@@ -12,6 +12,8 @@ import {
   verifyRefreshToken,
 } from "../utils/jwtTokens.js";
 
+const ACTIVATION_TOKEN_TTL_SECONDS = 60 * 60 * 24; // 24h
+
 /**
  * 🔒 Retorna apenas dados seguros para o frontend
  */
@@ -28,30 +30,35 @@ function safeUser(user) {
 
 /**
  * ======================
- * 🔁 REFRESH TOKEN
+ * 🔁 REFRESH TOKEN (DB)
  * ======================
  */
-async function saveRefreshToken(redis, userId, refreshToken) {
-  if (!redis?.isOpen) return;
-  const tokenHash = hashToken(refreshToken);
-  await redis.set(`refresh:${userId}`, tokenHash, {
-    EX: REFRESH_TOKEN_TTL_SECONDS,
+async function issueRefreshToken(userId) {
+  const jti = newJti();
+  const refreshToken = signRefreshToken({
+    id: userId,
+    jti,
+    typ: "refresh",
   });
-}
 
-async function getRefreshTokenHash(redis, userId) {
-  if (!redis?.isOpen) return null;
-  return redis.get(`refresh:${userId}`);
-}
+  const tokenHash = hashToken(refreshToken);
+  const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_SECONDS * 1000);
 
-async function deleteRefreshToken(redis, userId) {
-  if (!redis?.isOpen) return;
-  await redis.del(`refresh:${userId}`);
+  await prisma.refreshToken.create({
+    data: {
+      userId,
+      jti,
+      tokenHash,
+      expiresAt,
+    },
+  });
+
+  return { refreshToken, jti, expiresAt };
 }
 
 /**
  * ======================
- * 🔑 TOKENS DE USO ÚNICO
+ * 🔑 TOKENS DE USO ÚNICO (REDIS)
  * ======================
  */
 async function createOneTimeToken(redis, prefix, userId, ttlSeconds) {
@@ -113,36 +120,36 @@ const authService = {
         sobrenome,
         email: normalizedEmail,
         password: hashedPassword,
+        // Requisito: não autenticar no cadastro, conta nasce inativa
         emailVerificado: false,
-        ativo: true,
+        ativo: false,
       },
     });
 
-    let activationToken = null;
+    // Token de ativação persiste no banco (não depende do Redis)
+    const activationToken = generateCryptoToken();
+    const activationTokenHash = hashToken(activationToken);
+    const expiresAt = new Date(Date.now() + ACTIVATION_TOKEN_TTL_SECONDS * 1000);
 
-    if (redis?.isOpen) {
-      console.log("REDIS:", redis?.isOpen);
+    await prisma.activationToken.create({
+      data: {
+        userId: user.id,
+        tokenHash: activationTokenHash,
+        expiresAt,
+      },
+    });
 
-      activationToken = await createOneTimeToken(
-        redis,
-        "activate",
-        user.id,
-        60 * 60 * 24        
-      );
-
-      const link = `${env.frontendUrl}/activate?token=${activationToken}`;
-
-      await sendEmail(
-        normalizedEmail,
-        "Ative sua conta",
-        `
-          <p>Olá ${user.nome},</p>
-          <p>Para ativar sua conta, clique no link abaixo:</p>
-          <p><a href="${link}">${link}</a></p>
-          <p>Este link expira em 24 horas.</p>
-        `
-      );
-    }
+    const link = `${env.frontendUrl}/activate?token=${activationToken}`;
+    await sendEmail(
+      normalizedEmail,
+      "Ative sua conta",
+      `
+        <p>Olá ${user.nome},</p>
+        <p>Para ativar sua conta, clique no link abaixo:</p>
+        <p><a href="${link}">${link}</a></p>
+        <p>Este link expira em 24 horas.</p>
+      `
+    );
 
     await auditLog({
       acao: "USER_REGISTER",
@@ -152,8 +159,8 @@ const authService = {
     });
 
     return {
+      activationRequired: true,
       usuario: safeUser(user),
-      ...(activationToken ? { activationToken } : {}),
     };
   },
 
@@ -164,14 +171,36 @@ const authService = {
    */
   async activateAccount(token, { redis, ip, userAgent } = {}) {
     if (!token) throw new Error("Token inválido");
-    if (!redis?.isOpen) throw new Error("Ativação indisponível");
+    const tokenHash = hashToken(token);
+    const now = new Date();
 
-    const userId = await consumeOneTimeToken(redis, "activate", token);
-    if (!userId) throw new Error("Token inválido ou expirado");
+    const activation = await prisma.activationToken.findFirst({
+      where: {
+        tokenHash,
+        usedAt: null,
+        expiresAt: { gt: now },
+      },
+    });
+    if (!activation) throw new Error("Token inválido ou expirado");
 
-    const user = await prisma.usuario.update({
-      where: { id: userId },
-      data: { emailVerificado: true },
+    const user = await prisma.$transaction(async (tx) => {
+      await tx.activationToken.update({
+        where: { id: activation.id },
+        data: { usedAt: now },
+      });
+
+      // Ativação completa: email verificado e conta ativa
+      const updated = await tx.usuario.update({
+        where: { id: activation.userId },
+        data: { emailVerificado: true, ativo: true },
+      });
+
+      // Higiene: remove outros tokens pendentes do mesmo usuário
+      await tx.activationToken.deleteMany({
+        where: { userId: activation.userId, usedAt: null },
+      });
+
+      return updated;
     });
 
     await auditLog({
@@ -235,13 +264,7 @@ const authService = {
       ehAdmin: !!user.ehAdmin,
     });
 
-    const refreshToken = signRefreshToken({
-      id: user.id,
-      jti: newJti(),
-      typ: "refresh",
-    });
-
-    await saveRefreshToken(redis, user.id, refreshToken);
+    const { refreshToken } = await issueRefreshToken(user.id);
 
     await auditLog({
       acao: "LOGIN_SUCCESS",
@@ -268,21 +291,39 @@ const authService = {
     const decoded = verifyRefreshToken(refreshToken);
     if (decoded.typ !== "refresh") throw new Error("Refresh token inválido");
 
-    const storedHash = await getRefreshTokenHash(redis, decoded.id);
-    if (!storedHash) throw new Error("Refresh token inválido");
+    const userId = Number(decoded.id);
+    if (!Number.isFinite(userId)) throw new Error("Refresh token inválido");
+    const jti = String(decoded.jti || "");
+    if (!jti) throw new Error("Refresh token inválido");
 
-    if (storedHash !== hashToken(refreshToken)) {
+    const stored = await prisma.refreshToken.findUnique({
+      where: { jti },
+    });
+    if (!stored || stored.userId !== userId) throw new Error("Refresh token inválido");
+    if (stored.revokedAt) throw new Error("Refresh token inválido");
+    if (stored.expiresAt <= new Date()) throw new Error("Refresh token inválido");
+    if (stored.tokenHash !== hashToken(refreshToken)) {
       throw new Error("Refresh token inválido");
     }
 
     const user = await prisma.usuario.findUnique({
-      where: { id: Number(decoded.id) },
+      where: { id: userId },
     });
     if (!user) throw new Error("Refresh token inválido");
+    if (!user.emailVerificado || !user.ativo) {
+      throw new Error("Conta não está ativa");
+    }
 
     const accessToken = signAccessToken({
       id: user.id,
       ehAdmin: !!user.ehAdmin,
+    });
+
+    // Rotação do refresh token (padrão mais seguro)
+    const { refreshToken: newRefreshToken } = await issueRefreshToken(user.id);
+    await prisma.refreshToken.update({
+      where: { id: stored.id },
+      data: { revokedAt: new Date() },
     });
 
     await auditLog({
@@ -292,7 +333,7 @@ const authService = {
       userAgent,
     });
 
-    return { accessToken };
+    return { accessToken, refreshToken: newRefreshToken };
   },
 
   /**
@@ -302,7 +343,10 @@ const authService = {
    */
   async logout(userId, { redis, ip, userAgent } = {}) {
     if (!userId) return;
-    await deleteRefreshToken(redis, userId);
+    await prisma.refreshToken.updateMany({
+      where: { userId: Number(userId), revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
     await auditLog({ acao: "LOGOUT", usuarioId: userId, ip, userAgent });
   },
 
