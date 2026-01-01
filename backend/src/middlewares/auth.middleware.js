@@ -1,4 +1,5 @@
 import { verifyAccessToken } from "../utils/jwtTokens.js";
+import { prisma } from "../config/prisma.js";
 
 export default async function authMiddleware(req, reply) {
   try {
@@ -16,6 +17,18 @@ export default async function authMiddleware(req, reply) {
 
     // Padronização do projeto: req.user.id
     req.user = { id: userId, ehAdmin: !!decoded?.ehAdmin };
+
+    // Garante que o usuário existe e está apto (evita token válido para conta inativa)
+    const user = await prisma.usuario.findUnique({
+      where: { id: userId },
+      select: { id: true, ativo: true, emailVerificado: true },
+    });
+    if (!user) {
+      return reply.code(401).send({ erro: "Token inválido" });
+    }
+    if (!user.emailVerificado || !user.ativo) {
+      return reply.code(403).send({ erro: "Conta não ativada" });
+    }
 
     // Bloqueio/ban (sem mudar schema): flag no Redis
     const redis = req.server?.redis;

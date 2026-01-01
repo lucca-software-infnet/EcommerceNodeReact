@@ -52,6 +52,18 @@ app.decorate("prisma", prisma);
 app.decorate("authenticate", authMiddleware);
 
 /* =========================
+   REDIS CONNECT (best-effort)
+========================= */
+try {
+  if (redis && !redis.isOpen) {
+    await redis.connect();
+  }
+} catch (err) {
+  // Redis é opcional (rate-limit / flags). Não derruba o boot.
+  app.log.warn({ err }, "Redis indisponível - seguindo sem cache/rate-limit");
+}
+
+/* =========================
    PLUGINS
 ========================= */
 await app.register(helmet);
