@@ -328,13 +328,50 @@ const authService = {
    * 🚪 LOGOUT
    * ======================
    */
-  async logout(userId, { redis, ip, userAgent } = {}) {
+  async logout(userId, { refreshToken, redis, ip, userAgent } = {}) {
     if (!userId) return;
-    await prisma.refreshToken.updateMany({
-      where: { usuarioId: Number(userId), revokedAt: null },
-      data: { revokedAt: new Date() },
+
+    const now = new Date();
+    let revokedMode = "all";
+    let revokedJti = null;
+
+    // Preferência: revogar APENAS o refresh token atual (do cookie),
+    // mantendo outros dispositivos logados.
+    if (refreshToken) {
+      try {
+        const decoded = verifyRefreshToken(refreshToken);
+        if (decoded?.typ === "refresh" && Number(decoded?.id) === Number(userId)) {
+          revokedMode = "single";
+          revokedJti = String(decoded.jti);
+          await prisma.refreshToken.updateMany({
+            where: {
+              usuarioId: Number(userId),
+              jti: revokedJti,
+              revokedAt: null,
+              tokenHash: hashToken(refreshToken),
+            },
+            data: { revokedAt: now },
+          });
+        }
+      } catch {
+        // Se o cookie estiver inválido, seguimos com o logout seguro padrão (revoga tudo).
+      }
+    }
+
+    if (revokedMode === "all") {
+      await prisma.refreshToken.updateMany({
+        where: { usuarioId: Number(userId), revokedAt: null },
+        data: { revokedAt: now },
+      });
+    }
+
+    await auditLog({
+      acao: "LOGOUT",
+      usuarioId: userId,
+      ip,
+      userAgent,
+      meta: { mode: revokedMode, jti: revokedJti },
     });
-    await auditLog({ acao: "LOGOUT", usuarioId: userId, ip, userAgent });
   },
 
   /**
