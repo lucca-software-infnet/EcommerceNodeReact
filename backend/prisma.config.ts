@@ -6,7 +6,7 @@ import { defineConfig } from "prisma/config";
 export default defineConfig({
   // Mantém o schema original intacto e usa um schema de runtime
   // compatível com o Prisma Client (não altera o BD/migrations).
-  schema: "prisma/schema.fixed.prisma",
+  schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
   },

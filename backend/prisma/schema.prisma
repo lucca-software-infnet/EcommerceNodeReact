@@ -22,6 +22,9 @@ model Usuario {
   celular        String?
   dataNascimento DateTime?
   dataRegistro   DateTime  @default(now())
+  emailVerificado Boolean @default(false)
+  ativo            Boolean @default(true)
+
 
   enderecos      Endereco[]
   produtos       Produto[]
@@ -70,6 +73,8 @@ model Produto {
   imagens        ImagemProduto[]
   itensCarrinho ItemCarrinho[]
   compraItems   CompraItem[]
+  // Necessário para o Prisma gerar o client (não altera o BD)
+  movimentosEstoque EstoqueMovimento[]
 }
 
 /* =========================
@@ -185,3 +190,4 @@ model EstoqueMovimento {
   produtoId  Int
   produto    Produto  @relation(fields: [produtoId], references: [id])
 }
+

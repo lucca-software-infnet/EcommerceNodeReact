@@ -1,6 +1,5 @@
 import Fastify from "fastify";
 
-import dotenv from "dotenv";
 import cors from "@fastify/cors";
 import cookie from "@fastify/cookie";
 import helmet from "@fastify/helmet";
@@ -9,6 +8,7 @@ import fastifyStatic from "@fastify/static";
 
 import path from "path";
 import fs from "fs";
+import { fileURLToPath } from "url";
 
 import { env } from "./config/env.js";
 import { redis } from "./config/redis.js";
@@ -19,14 +19,21 @@ import routes from "./routes/index.js";
 import errorMiddleware from "./middlewares/error.middleware.js";
 import authMiddleware from "./middlewares/auth.middleware.js";
 
-dotenv.config();
-
+/* =========================
+   FASTIFY INSTANCE
+========================= */
 const app = Fastify({ logger: true });
 
 /* =========================
-   CRIA PASTAS DE UPLOAD
+   PATHS (ESM SAFE)
 ========================= */
-const uploadBase = path.resolve("uploads");
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+/* =========================
+   UPLOAD DIRS
+========================= */
+const uploadBase = path.resolve(__dirname, "..", "uploads");
 const userUpload = path.join(uploadBase, "users");
 const productUpload = path.join(uploadBase, "products");
 
@@ -37,59 +44,55 @@ const productUpload = path.join(uploadBase, "products");
 });
 
 /* =========================
-   CONEXÕES
+   DECORATORS
 ========================= */
-try {
-  if (env.redisUrl) await redis.connect();
-} catch (err) {
-  app.log.error({ err }, "Falha ao conectar no Redis");
-}
-
 app.decorate("redis", redis);
 app.decorate("prisma", prisma);
-// compat: algumas rotas antigas usam app.authenticate
+// compatibilidade com rotas antigas
 app.decorate("authenticate", authMiddleware);
 
 /* =========================
    PLUGINS
 ========================= */
 await app.register(helmet);
+
 await app.register(cookie);
+
 await app.register(cors, {
   origin: env.frontendUrl,
   credentials: true,
 });
 
-// upload multipart
 await app.register(multipart, {
   limits: {
-    fileSize: 2 * 1024 * 1024 // 2MB
-  }
+    fileSize: 2 * 1024 * 1024, // 2MB
+  },
 });
 
-// servir arquivos estáticos
 await app.register(fastifyStatic, {
   root: uploadBase,
-  prefix: "/uploads/"
+  prefix: "/uploads/",
 });
 
-// hardening headers
+/* =========================
+   SECURITY HEADERS
+========================= */
 app.addHook("onSend", async (_req, reply) => {
   reply.header("X-Content-Type-Options", "nosniff");
 });
+
 /* =========================
    HEALTHCHECK
 ========================= */
 app.get("/health", async () => ({ ok: true }));
 
 /* =========================
-   ROTAS
+   ROUTES
 ========================= */
 app.register(routes, { prefix: "/api" });
 
-
 /* =========================
-   ERRO GLOBAL
+   GLOBAL ERROR HANDLER
 ========================= */
 app.setErrorHandler(errorMiddleware);
 
@@ -100,18 +103,25 @@ app.addHook("onClose", async () => {
   try {
     await prisma.$disconnect();
   } catch {}
+
   try {
-    if (redis?.isOpen) await redis.quit();
+    if (redis?.isOpen) {
+      await redis.quit();
+    }
   } catch {}
 });
 
 /* =========================
-   START
+   START SERVER
 ========================= */
 const start = async () => {
   try {
-    await app.listen({ port: env.port, host: "0.0.0.0" });
-    app.log.info(`Servidor rodando na porta ${env.port}`);
+    await app.listen({
+      port: env.port,
+      host: "0.0.0.0",
+    });
+
+    app.log.info(`🚀 Servidor rodando na porta ${env.port}`);
   } catch (err) {
     app.log.error(err);
     process.exit(1);

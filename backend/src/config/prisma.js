@@ -1,11 +1,10 @@
-import dotenv from "dotenv";
 import prismaPkg from "@prisma/client";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 
 const { PrismaClient } = prismaPkg;
 
 // garante leitura do .env mesmo se prisma for importado antes do server boot
-dotenv.config();
+
 
 function adapterFromDatabaseUrl() {
   const url = process.env.DATABASE_URL;

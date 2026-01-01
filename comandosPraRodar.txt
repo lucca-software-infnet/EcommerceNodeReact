@@ -1,0 +1,5 @@
+C:\Faculdade\EcommerceNodeReact\frontend>npm run dev
+PS C:\Faculdade\EcommerceNodeReact> docker compose up -d
+
+PS C:\Faculdade\EcommerceNodeReact> docker exec -it ecommerce_backend sh
+/app # npx prisma studio --port 5555
