@@ -1,11 +1,25 @@
 import authService from "../services/auth.service.js";
 import { env } from "../config/env.js";
+import { REFRESH_TOKEN_TTL_SECONDS } from "../utils/jwtTokens.js";
 
 function getContext(req) {
   return {
     ip: req.ip,
     userAgent: req.headers["user-agent"],
   };
+}
+
+function setRefreshCookie(reply, refreshToken) {
+  // refresh token em cookie httpOnly (mais robusto)
+  reply.setCookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: env.cookieSecure,
+    sameSite: "lax",
+    // o server registra as rotas com prefixo "/api"
+    path: "/api/auth/refresh",
+    // Fastify cookie: maxAge em segundos
+    maxAge: REFRESH_TOKEN_TTL_SECONDS,
+  });
 }
 
 class AuthController {
@@ -55,14 +69,7 @@ class AuthController {
         }
       );
 
-      // refresh token em cookie httpOnly (mais robusto)
-      reply.setCookie("refreshToken", refreshToken, {
-        httpOnly: true,
-        secure: env.cookieSecure,
-        sameSite: "lax",
-        path: "/api/auth/refresh",
-        maxAge: 60 * 60 * 24 * 7,
-      });
+      setRefreshCookie(reply, refreshToken);
 
       return reply.send({ accessToken, usuario });
     } catch (err) {
@@ -80,13 +87,7 @@ class AuthController {
 
       // Se o serviço rotacionar o refresh token, atualiza o cookie httpOnly
       if (result?.refreshToken) {
-        reply.setCookie("refreshToken", result.refreshToken, {
-          httpOnly: true,
-          secure: env.cookieSecure,
-          sameSite: "lax",
-          path: "/api/auth/refresh",
-          maxAge: 60 * 60 * 24 * 7,
-        });
+        setRefreshCookie(reply, result.refreshToken);
       }
 
       return reply.send({ accessToken: result?.accessToken });
