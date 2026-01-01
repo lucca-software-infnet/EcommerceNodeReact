@@ -91,6 +91,8 @@ class AuthController {
 
       return reply.send({ accessToken: result?.accessToken });
     } catch (err) {
+      // token inválido/ausente: limpa cookie para evitar retries inúteis
+      reply.clearCookie("refreshToken", { path: "/api/auth/refresh" });
       return reply.code(401).send({ erro: err.message });
     }
   }

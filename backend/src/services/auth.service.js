@@ -28,6 +28,7 @@ function safeUser(user) {
 }
 
 const ACTIVATION_TOKEN_TTL_SECONDS = 60 * 60 * 24; // 24h
+const PASSWORD_RESET_TOKEN_TTL_SECONDS = 60 * 15; // 15 min
 
 /**
  * ======================
@@ -141,6 +142,12 @@ const authService = {
     const user = await prisma.$transaction(async (tx) => {
       await tx.activationToken.update({
         where: { id: activation.id },
+        data: { usedAt: now },
+      });
+
+      // remove/invalida quaisquer outros tokens pendentes do usuário
+      await tx.activationToken.updateMany({
+        where: { usuarioId: activation.usuarioId, usedAt: null, NOT: { id: activation.id } },
         data: { usedAt: now },
       });
 
@@ -345,16 +352,26 @@ const authService = {
 
     if (!user) return;
 
-    if (!redis?.isOpen) return;
+    const { rawToken } = await prisma.$transaction(async (tx) => {
+      // invalida tokens anteriores não usados
+      await tx.passwordResetToken.updateMany({
+        where: { usuarioId: user.id, usedAt: null },
+        data: { usedAt: new Date() },
+      });
 
-    const token = await createOneTimeToken(
-      redis,
-      "pwdreset",
-      user.id,
-      60 * 15
-    );
+      const rawToken = generateCryptoToken();
+      await tx.passwordResetToken.create({
+        data: {
+          tokenHash: hashToken(rawToken),
+          usuarioId: user.id,
+          expiresAt: new Date(Date.now() + PASSWORD_RESET_TOKEN_TTL_SECONDS * 1000),
+        },
+      });
 
-    const link = `${env.frontendUrl}/reset-password?token=${token}`;
+      return { rawToken };
+    });
+
+    const link = `${env.frontendUrl}/reset-password?token=${rawToken}`;
 
     await sendEmail(
       normalizedEmail,
@@ -370,21 +387,42 @@ const authService = {
 
   async resetPassword({ token, senha }, { redis, ip, userAgent } = {}) {
     if (!token || !senha) throw new Error("Token e senha são obrigatórios");
-    if (!redis?.isOpen) throw new Error("Serviço indisponível");
+    const now = new Date();
 
-    const userId = await consumeOneTimeToken(redis, "pwdreset", token);
-    if (!userId) throw new Error("Token inválido ou expirado");
+    const tokenRow = await prisma.passwordResetToken.findUnique({
+      where: { tokenHash: hashToken(String(token)) },
+    });
+    if (!tokenRow || tokenRow.usedAt) throw new Error("Token inválido ou expirado");
+    if (tokenRow.expiresAt <= now) throw new Error("Token inválido ou expirado");
 
     const hashedPassword = await bcrypt.hash(senha, 12);
 
-    await prisma.usuario.update({
-      where: { id: userId },
-      data: { password: hashedPassword },
+    await prisma.$transaction(async (tx) => {
+      await tx.passwordResetToken.update({
+        where: { id: tokenRow.id },
+        data: { usedAt: now },
+      });
+
+      await tx.passwordResetToken.updateMany({
+        where: { usuarioId: tokenRow.usuarioId, usedAt: null, NOT: { id: tokenRow.id } },
+        data: { usedAt: now },
+      });
+
+      await tx.usuario.update({
+        where: { id: tokenRow.usuarioId },
+        data: { password: hashedPassword },
+      });
+
+      // padrão de e-commerce: após reset, revoga refresh tokens ativos (força novo login)
+      await tx.refreshToken.updateMany({
+        where: { usuarioId: tokenRow.usuarioId, revokedAt: null },
+        data: { revokedAt: now },
+      });
     });
 
     await auditLog({
       acao: "PASSWORD_RESET_SUCCESS",
-      usuarioId: userId,
+      usuarioId: tokenRow.usuarioId,
       ip,
       userAgent,
     });

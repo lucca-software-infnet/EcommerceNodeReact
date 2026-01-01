@@ -28,6 +28,7 @@ model Usuario {
 
   activationTokens ActivationToken[]
   refreshTokens    RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
 
   enderecos      Endereco[]
   produtos       Produto[]
@@ -65,6 +66,23 @@ model RefreshToken {
   expiresAt DateTime
   revokedAt DateTime?
   replacedByJti String?
+
+  usuarioId Int
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+  @@index([expiresAt])
+}
+
+/* =========================
+   RESET DE SENHA (token único)
+========================= */
+model PasswordResetToken {
+  id        Int      @id @default(autoincrement())
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
 
   usuarioId Int
   usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
