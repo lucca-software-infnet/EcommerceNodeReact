@@ -69,7 +69,7 @@
 
 .shop-header__searchBtn {
   height: 40px;
-  padding: 0 14px;
+  padding: 0 10px;
   border: none;
   border-radius: 10px;
   background: #3498db;
@@ -192,6 +192,10 @@
 
 .user-menu__item--danger:hover {
   background: rgba(231, 76, 60, 0.1);
+  color: #c0392b;
+}
+
+.user-menu__item--danger {
   color: #c0392b;
 }
 

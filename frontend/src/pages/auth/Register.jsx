@@ -15,7 +15,8 @@ export default function Register() {
   const [erroLocal, setErroLocal] = useState("");
 
   useEffect(() => {
-    if (isAuthenticated) navigate("/me", { replace: true });
+    // Se já estiver logado, mantém o fluxo no padrão do ecommerce: Home pública.
+    if (isAuthenticated) navigate("/", { replace: true });
   }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e) => {

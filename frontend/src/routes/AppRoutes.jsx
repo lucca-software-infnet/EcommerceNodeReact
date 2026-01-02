@@ -10,8 +10,6 @@ import Activate from "../pages/auth/Activate.jsx";
 import ForgotPassword from "../pages/auth/ForgotPassword.jsx";
 import ResetPassword from "../pages/auth/ResetPassword.jsx";
 
-import Me from "../pages/account/Me.jsx";
-
 export default function AppRoutes() {
   const { isInitializing } = useAuth();
 
@@ -29,7 +27,9 @@ export default function AppRoutes() {
 
       {/* Privado (e-commerce / conta) */}
       <Route element={<ProtectedRoute />}>
-        <Route path="/me" element={<Me />} />
+        {/* /me não deve ser usado no fluxo (mantido só por compatibilidade) */}
+        <Route path="/me" element={<Navigate to="/account" replace />} />
+        <Route path="/account" element={<ComingSoon title="Minha conta" />} />
         <Route path="/cart" element={<ComingSoon title="Carrinho" />} />
         <Route path="/checkout" element={<ComingSoon title="Checkout" />} />
         <Route path="/orders" element={<ComingSoon title="Pedidos" />} />

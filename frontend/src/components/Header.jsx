@@ -42,11 +42,10 @@ export default function Header({ onSearch, initialQuery = "", isInitializingSess
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuth();
 
-  const [query, setQuery] = useState(initialQuery);
+  // Input é "semi-controlado": usa initialQuery apenas na montagem (evita setState em effect).
+  const [query, setQuery] = useState(() => initialQuery);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef(null);
-
-  useEffect(() => setQuery(initialQuery), [initialQuery]);
 
   useEffect(() => {
     if (!isMenuOpen) return;
@@ -107,7 +106,7 @@ export default function Header({ onSearch, initialQuery = "", isInitializingSess
         <div className="shop-header__right" ref={menuRef}>
           {!isAuthenticated ? (
             <Link to="/login" className="shop-header__loginBtn">
-              Entrar
+              Logar
             </Link>
           ) : (
             <>
@@ -133,7 +132,7 @@ export default function Header({ onSearch, initialQuery = "", isInitializingSess
 
                   <div className="user-menu__divider" />
 
-                  <div className="user-menu__item" role="menuitem" tabIndex={0} onClick={() => go("/me")}>
+                  <div className="user-menu__item" role="menuitem" tabIndex={0} onClick={() => go("/account")}>
                     Minha conta
                   </div>
                   <div
