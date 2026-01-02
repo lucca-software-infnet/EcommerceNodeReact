@@ -15,7 +15,8 @@ export default function Register() {
   const [erroLocal, setErroLocal] = useState("");
 
   useEffect(() => {
-    if (isAuthenticated) navigate("/me", { replace: true });
+    // Regra obrigatória: não usar /me e manter fluxo pós-login para "/"
+    if (isAuthenticated) navigate("/", { replace: true });
   }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e) => {

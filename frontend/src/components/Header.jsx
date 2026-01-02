@@ -42,11 +42,12 @@ export default function Header({ onSearch, initialQuery = "", isInitializingSess
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuth();
 
-  const [query, setQuery] = useState(initialQuery);
+  const isControlledSearch = typeof onSearch === "function";
+  const [uncontrolledQuery, setUncontrolledQuery] = useState(initialQuery);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef(null);
 
-  useEffect(() => setQuery(initialQuery), [initialQuery]);
+  const query = isControlledSearch ? initialQuery : uncontrolledQuery;
 
   useEffect(() => {
     if (!isMenuOpen) return;
@@ -75,7 +76,7 @@ export default function Header({ onSearch, initialQuery = "", isInitializingSess
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSearch?.(query);
+    if (isControlledSearch) onSearch(query);
   };
 
   const go = (path) => {
@@ -94,20 +95,46 @@ export default function Header({ onSearch, initialQuery = "", isInitializingSess
         <form className="shop-header__search" onSubmit={handleSubmit} role="search">
           <input
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              const next = e.target.value;
+              if (isControlledSearch) onSearch(next);
+              else setUncontrolledQuery(next);
+            }}
             className="shop-header__searchInput"
             placeholder="Buscar produtos, marcas e categorias..."
             aria-label="Buscar"
           />
-          <button className="shop-header__searchBtn" type="submit">
-            Buscar
+          <button className="shop-header__searchBtn" type="submit" aria-label="Buscar">
+            <svg
+              className="shop-header__searchIcon"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <path
+                d="M10.5 18.5a8 8 0 1 1 0-16 8 8 0 0 1 0 16Z"
+                stroke="currentColor"
+                strokeWidth="2"
+              />
+              <path
+                d="M16.6 16.6 21 21"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+            </svg>
+            <span className="shop-header__srOnly">Buscar</span>
           </button>
         </form>
 
         <div className="shop-header__right" ref={menuRef}>
           {!isAuthenticated ? (
             <Link to="/login" className="shop-header__loginBtn">
-              Entrar
+              Logar
             </Link>
           ) : (
             <>
@@ -133,7 +160,7 @@ export default function Header({ onSearch, initialQuery = "", isInitializingSess
 
                   <div className="user-menu__divider" />
 
-                  <div className="user-menu__item" role="menuitem" tabIndex={0} onClick={() => go("/me")}>
+                  <div className="user-menu__item" role="menuitem" tabIndex={0} onClick={() => go("/account")}>
                     Minha conta
                   </div>
                   <div
@@ -156,7 +183,7 @@ export default function Header({ onSearch, initialQuery = "", isInitializingSess
                     Configurações
                   </div>
                   <div className="user-menu__item" role="menuitem" tabIndex={0} onClick={() => go("/help")}>
-                    Help
+                    Ajuda
                   </div>
                   <div className="user-menu__item user-menu__item--danger" role="menuitem" tabIndex={0} onClick={logout}>
                     Sair

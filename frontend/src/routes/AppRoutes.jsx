@@ -29,7 +29,7 @@ export default function AppRoutes() {
 
       {/* Privado (e-commerce / conta) */}
       <Route element={<ProtectedRoute />}>
-        <Route path="/me" element={<Me />} />
+        <Route path="/account" element={<Me />} />
         <Route path="/cart" element={<ComingSoon title="Carrinho" />} />
         <Route path="/checkout" element={<ComingSoon title="Checkout" />} />
         <Route path="/orders" element={<ComingSoon title="Pedidos" />} />
