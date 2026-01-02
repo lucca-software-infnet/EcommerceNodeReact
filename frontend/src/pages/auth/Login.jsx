@@ -13,7 +13,7 @@ export default function Login() {
   const [erroLocal, setErroLocal] = useState("");
 
   useEffect(() => {
-    if (isAuthenticated) navigate("/me", { replace: true });
+    if (isAuthenticated) navigate("/", { replace: true });
   }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e) => {
@@ -21,7 +21,7 @@ export default function Login() {
     setErroLocal("");
     try {
       await login({ email, senha });
-      const to = location.state?.from?.pathname || "/me";
+      const to = location.state?.from?.pathname || "/";
       navigate(to, { replace: true });
     } catch {
       setErroLocal(lastError || "Falha no login");

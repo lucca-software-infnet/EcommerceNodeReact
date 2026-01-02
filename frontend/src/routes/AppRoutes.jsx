@@ -1,5 +1,4 @@
 import { Navigate, Route, Routes } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext.jsx";
 import ProtectedRoute from "./ProtectedRoute.jsx";
 import ComingSoon from "../components/ComingSoon.jsx";
 
@@ -10,26 +9,13 @@ import ForgotPassword from "../pages/auth/ForgotPassword.jsx";
 import ResetPassword from "../pages/auth/ResetPassword.jsx";
 
 import Me from "../pages/account/Me.jsx";
+import Home from "../pages/Home.jsx";
 
 export default function AppRoutes() {
-  const { isAuthenticated, isInitializing } = useAuth();
-
   return (
     <Routes>
-      <Route
-        path="/"
-        element={
-          isInitializing ? (
-            <div style={{ maxWidth: 520, margin: "40px auto" }}>
-              <p>Carregando...</p>
-            </div>
-          ) : isAuthenticated ? (
-            <Navigate to="/me" replace />
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
-      />
+      {/* Home pública (NUNCA redirecionar / para /login automaticamente) */}
+      <Route path="/" element={<Home />} />
 
       {/* Público (auth) */}
       <Route path="/login" element={<Login />} />
@@ -45,6 +31,9 @@ export default function AppRoutes() {
         <Route path="/checkout" element={<ComingSoon title="Checkout" />} />
         <Route path="/orders" element={<ComingSoon title="Pedidos" />} />
         <Route path="/addresses" element={<ComingSoon title="Endereços" />} />
+        <Route path="/sales" element={<ComingSoon title="Minhas vendas" />} />
+        <Route path="/settings" element={<ComingSoon title="Configurações" />} />
+        <Route path="/help" element={<ComingSoon title="Ajuda" />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

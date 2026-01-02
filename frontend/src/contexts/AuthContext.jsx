@@ -58,7 +58,7 @@ export function AuthProvider({ children }) {
       clearSession();
       setUser(null);
       setIsInitializing(false);
-      navigate("/login", { replace: true });
+      navigate("/", { replace: true });
     });
   }, [navigate]);
 
@@ -94,7 +94,7 @@ export function AuthProvider({ children }) {
       clearSession();
       setUser(null);
       setIsBusy(false);
-      navigate("/login", { replace: true });
+      navigate("/", { replace: true });
     }
   }, [navigate]);
 
