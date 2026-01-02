@@ -121,7 +121,7 @@ const authService = {
    * ✅ ATIVAÇÃO DE CONTA
    * ======================
    */
-  async activateAccount(token, { redis, ip, userAgent } = {}) {
+  async activateAccount(token, { ip, userAgent } = {}) {
     if (!token) throw new Error("Token inválido");
 
     const tokenHash = hashToken(String(token));
@@ -175,7 +175,7 @@ const authService = {
    * 🔐 LOGIN
    * ======================
    */
-  async login({ email, senha }, { redis, ip, userAgent } = {}) {
+  async login({ email, senha }, { ip, userAgent } = {}) {
     const normalizedEmail = String(email || "").trim().toLowerCase();
     if (!normalizedEmail || !senha) {
       throw new Error("Email e senha são obrigatórios");
@@ -256,7 +256,7 @@ const authService = {
    * 🔄 REFRESH TOKEN
    * ======================
    */
-  async refresh(refreshToken, { redis, ip, userAgent } = {}) {
+  async refresh(refreshToken, { ip, userAgent } = {}) {
     if (!refreshToken) throw new Error("Refresh token não enviado");
 
     const decoded = verifyRefreshToken(refreshToken);
@@ -328,7 +328,7 @@ const authService = {
    * 🚪 LOGOUT
    * ======================
    */
-  async logout(userId, { refreshToken, redis, ip, userAgent } = {}) {
+  async logout(userId, { refreshToken, ip, userAgent } = {}) {
     if (!userId) return;
 
     const now = new Date();

@@ -1,31 +1,58 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 
 export default function Activate() {
-  const { activate, lastError } = useAuth();
+  const { activate } = useAuth();
   const [params] = useSearchParams();
   const token = params.get("token");
-  const [msg, setMsg] = useState(token ? "Ativando..." : "");
-  const [erro, setErro] = useState(token ? "" : "Token não informado");
+
+  const calledRef = useRef(false);
+
+  const [status, setStatus] = useState(
+    token ? "loading" : "error"
+  );
+  const [message, setMessage] = useState(
+    token ? "Ativando conta..." : "Token não informado"
+  );
 
   useEffect(() => {
     if (!token) return;
+    if (calledRef.current) return;
+
+    calledRef.current = true;
+
     activate(token)
-      .then((res) => setMsg(res?.msg || "Conta ativada com sucesso!"))
-      .catch(() => {
-        setErro(lastError || "Falha ao ativar conta");
-        setMsg("");
+      .then((res) => {
+        setStatus("success");
+        setMessage(res?.msg || "Conta ativada com sucesso!");
+      })
+      .catch((err) => {
+        const msg =
+          err?.response?.data?.erro ||
+          "Token inválido ou expirado";
+        setStatus("error");
+        setMessage(msg);
       });
-  }, [token, activate, lastError]);
+  }, [token, activate]);
 
   return (
     <div style={{ maxWidth: 520, margin: "40px auto" }}>
       <h1>Ativação</h1>
-      {msg ? <p style={{ color: "green" }}>{msg}</p> : null}
-      {erro ? <p style={{ color: "crimson" }}>{erro}</p> : null}
+
+      {status === "loading" && (
+        <p style={{ color: "#555" }}>{message}</p>
+      )}
+
+      {status === "success" && (
+        <p style={{ color: "green" }}>{message}</p>
+      )}
+
+      {status === "error" && (
+        <p style={{ color: "crimson" }}>{message}</p>
+      )}
+
       <Link to="/login">Ir para login</Link>
     </div>
   );
 }
-
