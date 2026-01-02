@@ -1,19 +1,16 @@
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-}
-
-body {
-  background-color: #f5f5f5;
-}
-
 .page-wrapper {
+  min-height: 100vh;
+  background-color: #f5f5f5;
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100vh;
+  padding: 24px 16px;
+}
+
+/* Evita vazamento de estilos globais */
+.page-wrapper * {
+  box-sizing: border-box;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 }
 
 .page-container {
@@ -26,25 +23,25 @@ body {
 }
 
 .page-container h1 {
+  margin: 0 0 30px;
   text-align: center;
   color: #2c3e50;
   font-size: 28px;
-  margin-bottom: 30px;
   font-weight: 600;
 }
 
-.form-group {
+.page-wrapper .form-group {
   margin-bottom: 20px;
 }
 
-.form-group label {
+.page-wrapper .form-group label {
   display: block;
   margin-bottom: 8px;
   font-weight: 500;
   color: #555;
 }
 
-.form-group input {
+.page-wrapper .form-group input {
   width: 100%;
   padding: 12px 15px;
   border: 1px solid #ddd;
@@ -53,19 +50,19 @@ body {
   transition: all 0.3s;
 }
 
-.form-group input:focus {
+.page-wrapper .form-group input:focus {
   border-color: #3498db;
   outline: none;
   box-shadow: 0 0 6px rgba(52, 152, 219, 0.3);
 }
 
-.error-message {
+.page-wrapper .error-message {
   color: crimson;
   font-size: 14px;
   margin-bottom: 10px;
 }
 
-button {
+.page-wrapper button {
   width: 100%;
   padding: 12px;
   background-color: #3498db;
@@ -78,11 +75,11 @@ button {
   transition: all 0.3s;
 }
 
-button:hover {
+.page-wrapper button:hover {
   background-color: #2980b9;
 }
 
-button:disabled {
+.page-wrapper button:disabled {
   opacity: 0.7;
   cursor: not-allowed;
 }

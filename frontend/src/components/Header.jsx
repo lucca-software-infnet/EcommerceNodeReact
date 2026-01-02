@@ -38,15 +38,17 @@ function svgAvatarDataUrl(initials) {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
-export default function Header({ onSearch, initialQuery = "", isInitializingSession = false }) {
+export default function Header({ onSearch, query = "", onQueryChange, isInitializingSession = false }) {
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuth();
 
-  const [query, setQuery] = useState(initialQuery);
+  // Controlado (via props) quando onQueryChange é fornecido; caso contrário, mantém estado local.
+  const [localQuery, setLocalQuery] = useState(query);
+  const effectiveQuery = onQueryChange ? query : localQuery;
+  const setQuery = onQueryChange || setLocalQuery;
+
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef(null);
-
-  useEffect(() => setQuery(initialQuery), [initialQuery]);
 
   useEffect(() => {
     if (!isMenuOpen) return;
@@ -75,7 +77,7 @@ export default function Header({ onSearch, initialQuery = "", isInitializingSess
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSearch?.(query);
+    onSearch?.(effectiveQuery);
   };
 
   const go = (path) => {
@@ -93,21 +95,36 @@ export default function Header({ onSearch, initialQuery = "", isInitializingSess
 
         <form className="shop-header__search" onSubmit={handleSubmit} role="search">
           <input
-            value={query}
+            value={effectiveQuery}
             onChange={(e) => setQuery(e.target.value)}
             className="shop-header__searchInput"
             placeholder="Buscar produtos, marcas e categorias..."
             aria-label="Buscar"
           />
           <button className="shop-header__searchBtn" type="submit">
-            Buscar
+            <span className="shop-header__srOnly">Buscar</span>
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <path
+                d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"
+                stroke="currentColor"
+                strokeWidth="2"
+              />
+              <path d="M16.5 16.5 21 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
           </button>
         </form>
 
         <div className="shop-header__right" ref={menuRef}>
           {!isAuthenticated ? (
             <Link to="/login" className="shop-header__loginBtn">
-              Entrar
+              Logar
             </Link>
           ) : (
             <>
@@ -133,34 +150,29 @@ export default function Header({ onSearch, initialQuery = "", isInitializingSess
 
                   <div className="user-menu__divider" />
 
-                  <div className="user-menu__item" role="menuitem" tabIndex={0} onClick={() => go("/me")}>
+                  <button className="user-menu__item" type="button" role="menuitem" onClick={() => go("/account")}>
                     Minha conta
-                  </div>
-                  <div
-                    className="user-menu__item"
-                    role="menuitem"
-                    tabIndex={0}
-                    onClick={() => go("/orders")}
-                  >
+                  </button>
+                  <button className="user-menu__item" type="button" role="menuitem" onClick={() => go("/orders")}>
                     Minhas compras
-                  </div>
-                  <div className="user-menu__item" role="menuitem" tabIndex={0} onClick={() => go("/sales")}>
+                  </button>
+                  <button className="user-menu__item" type="button" role="menuitem" onClick={() => go("/sales")}>
                     Minhas vendas
-                  </div>
-                  <div
-                    className="user-menu__item"
-                    role="menuitem"
-                    tabIndex={0}
-                    onClick={() => go("/settings")}
-                  >
+                  </button>
+                  <button className="user-menu__item" type="button" role="menuitem" onClick={() => go("/settings")}>
                     Configurações
-                  </div>
-                  <div className="user-menu__item" role="menuitem" tabIndex={0} onClick={() => go("/help")}>
-                    Help
-                  </div>
-                  <div className="user-menu__item user-menu__item--danger" role="menuitem" tabIndex={0} onClick={logout}>
+                  </button>
+                  <button className="user-menu__item" type="button" role="menuitem" onClick={() => go("/help")}>
+                    Ajuda
+                  </button>
+                  <button
+                    className="user-menu__item user-menu__item--danger"
+                    type="button"
+                    role="menuitem"
+                    onClick={logout}
+                  >
                     Sair
-                  </div>
+                  </button>
                 </div>
               ) : null}
             </>

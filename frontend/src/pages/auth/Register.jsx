@@ -15,7 +15,8 @@ export default function Register() {
   const [erroLocal, setErroLocal] = useState("");
 
   useEffect(() => {
-    if (isAuthenticated) navigate("/me", { replace: true });
+    // Regras: home (/) é pública e não usamos /me
+    if (isAuthenticated) navigate("/", { replace: true });
   }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e) => {

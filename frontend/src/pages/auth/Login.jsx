@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import "../../styles/Login.css";
 
 export default function Login() {
   const navigate = useNavigate();
-  const location = useLocation();
   const { login, isAuthenticated, isBusy, lastError } = useAuth();
 
   const [email, setEmail] = useState("");
@@ -13,7 +12,8 @@ export default function Login() {
   const [erroLocal, setErroLocal] = useState("");
 
   useEffect(() => {
-    if (isAuthenticated) navigate("/me", { replace: true });
+    // Regras: após login bem-sucedido, sempre redireciona para "/"
+    if (isAuthenticated) navigate("/", { replace: true });
   }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e) => {
@@ -21,8 +21,7 @@ export default function Login() {
     setErroLocal("");
     try {
       await login({ email, senha });
-      const to = location.state?.from?.pathname || "/me";
-      navigate(to, { replace: true });
+      navigate("/", { replace: true });
     } catch {
       setErroLocal(lastError || "Falha no login");
     }
