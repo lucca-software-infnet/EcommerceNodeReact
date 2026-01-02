@@ -1,8 +1,29 @@
 import path from "path";
 import authMiddleware from "../middlewares/auth.middleware.js";
 import { saveImage } from "../utils/uploadImage.js";
+import produtoController from "../controllers/produto.controller.js";
 
 export default async function produtoRoutes(app) {
+  // ======================
+  // 🌐 PÚBLICAS
+  // ======================
+  app.get("/produtos", produtoController.listarProdutos);
+  app.get("/produtos/:id", produtoController.buscarProduto);
+
+  // ======================
+  // 🔒 PROTEGIDAS
+  // ======================
+  app.post("/produtos", { preHandler: authMiddleware }, produtoController.criarProduto);
+  app.put(
+    "/produtos/:id",
+    { preHandler: authMiddleware },
+    produtoController.atualizarProduto
+  );
+  app.delete(
+    "/produtos/:id",
+    { preHandler: authMiddleware },
+    produtoController.removerProduto
+  );
 
   app.post(
     "/produtos/:id/imagens",
