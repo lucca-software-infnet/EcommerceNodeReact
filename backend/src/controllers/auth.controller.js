@@ -27,9 +27,12 @@ function getRefreshCookieOptions() {
 class AuthController {
   async register(req, reply) {
     try {
-      const { email, senha, nome, sobrenome } = req.body || {};
+      // Padronização do projeto: "senha" no payload.
+      // Compatibilidade: aceita "password" caso algum client ainda use esse nome.
+      const { email, senha, password, nome, sobrenome } = req.body || {};
+      const senhaFinal = senha ?? password;
       const result = await authService.register(
-        { email, senha, nome, sobrenome },
+        { email, senha: senhaFinal, nome, sobrenome },
         {
           redis: req.server.redis,
           ...getContext(req),
@@ -62,9 +65,12 @@ class AuthController {
 
   async login(req, reply) {
     try {
-      const { email, senha } = req.body || {};
+      // Padronização do projeto: "senha" no payload.
+      // Compatibilidade: aceita "password" caso algum client ainda use esse nome.
+      const { email, senha, password } = req.body || {};
+      const senhaFinal = senha ?? password;
       const { accessToken, refreshToken, usuario } = await authService.login(
-        { email, senha },
+        { email, senha: senhaFinal },
         {
           redis: req.server.redis,
           ...getContext(req),
@@ -122,9 +128,12 @@ class AuthController {
 
   async resetPassword(req, reply) {
     try {
-      const { token, senha } = req.body || {};
+      // Padronização do projeto: "senha" no payload.
+      // Compatibilidade: aceita "password" caso algum client ainda use esse nome.
+      const { token, senha, password } = req.body || {};
+      const senhaFinal = senha ?? password;
       await authService.resetPassword(
-        { token, senha },
+        { token, senha: senhaFinal },
         { redis: req.server.redis, ...getContext(req) }
       );
       return reply.send({ msg: "Senha atualizada" });
