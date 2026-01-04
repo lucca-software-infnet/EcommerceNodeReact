@@ -71,7 +71,9 @@ await app.register(helmet);
 await app.register(cookie);
 
 await app.register(cors, {
-  origin: env.frontendUrl,
+  // Em dev é comum alternar entre localhost/127.0.0.1.
+  // Mantemos allowlist simples e com credenciais habilitadas para cookies httpOnly.
+  origin: [env.frontendUrl, "http://localhost:5173", "http://127.0.0.1:5173"],
   credentials: true,
 });
 

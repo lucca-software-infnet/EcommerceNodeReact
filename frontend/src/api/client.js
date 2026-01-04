@@ -1,7 +1,27 @@
 import axios from "axios";
 import { clearSession, emitAuthEvent, getAccessToken, setAccessToken } from "../auth/session.js";
 
-const baseURL = import.meta.env.VITE_API_URL || "/api";
+function normalizeApiBaseURL(raw) {
+  const fallback = "/api";
+  if (!raw) return fallback;
+
+  const trimmed = String(raw).trim();
+  if (!trimmed) return fallback;
+
+  // remove trailing slashes
+  const base = trimmed.replace(/\/+$/, "");
+
+  // Se já for relativo e começar com /api, mantém.
+  if (base === "/api" || base.startsWith("/api/")) return base;
+
+  // Se já termina com /api (absoluto), mantém.
+  if (base.endsWith("/api")) return base;
+
+  // Caso comum: VITE_API_URL="http://localhost:3333" -> queremos "http://localhost:3333/api"
+  return `${base}/api`;
+}
+
+const baseURL = normalizeApiBaseURL(import.meta.env.VITE_API_URL);
 
 export const api = axios.create({
   baseURL,
