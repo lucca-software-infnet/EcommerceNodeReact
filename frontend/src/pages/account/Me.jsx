@@ -90,6 +90,9 @@ export default function Me() {
               <Link className="account-link" to="/sales">
                 Minhas vendas <span className="account-link__chev">›</span>
               </Link>
+              <Link className="account-link" to="/dashboard/produtos">
+                Produtos <span className="account-link__chev">›</span>
+              </Link>
               <Link className="account-link" to="/settings">
                 Configurações <span className="account-link__chev">›</span>
               </Link>
