@@ -11,6 +11,8 @@ import ForgotPassword from "../pages/auth/ForgotPassword.jsx";
 import ResetPassword from "../pages/auth/ResetPassword.jsx";
 
 import Me from "../pages/account/Me.jsx";
+import DashboardProdutos from "../pages/dashboard/DashboardProdutos.jsx";
+import EditarProduto from "../pages/dashboard/EditarProduto.jsx";
 
 export default function AppRoutes() {
   const { isInitializing } = useAuth();
@@ -37,6 +39,10 @@ export default function AppRoutes() {
         <Route path="/sales" element={<ComingSoon title="Minhas vendas" />} />
         <Route path="/settings" element={<ComingSoon title="Configurações" />} />
         <Route path="/help" element={<ComingSoon title="Ajuda" />} />
+
+        {/* Dashboard de produtos */}
+        <Route path="/dashboard/produtos" element={<DashboardProdutos />} />
+        <Route path="/dashboard/produtos/editar/:id" element={<EditarProduto />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
