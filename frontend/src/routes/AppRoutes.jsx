@@ -16,12 +16,10 @@ import DashboardProdutos from "../pages/dashboard/DashboardProdutos.jsx";
 import EditarProduto from "../pages/dashboard/EditarProduto.jsx";
 
 export default function AppRoutes() {
-  const { isInitializing } = useAuth();
-
   return (
     <Routes>
       {/* Home SEMPRE pública (nunca redireciona para /login automaticamente) */}
-      <Route path="/" element={<Home isInitializingSession={isInitializing} />} />
+      <Route path="/" element={<Home />} />
 
       {/* Público (auth) */}
       <Route path="/login" element={<Login />} />

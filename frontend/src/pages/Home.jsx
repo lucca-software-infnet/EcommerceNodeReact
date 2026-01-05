@@ -1,13 +1,14 @@
-import { useMemo, useState } from "react";
-import Header from "../components/Header.jsx";
+import { useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import HeroCarousel from "../components/home/HeroCarousel.jsx";
 import CategoryCarousel from "../components/home/CategoryCarousel.jsx";
 import ProductCard from "../components/home/ProductCard.jsx";
 import { HERO_SLIDES, MOCK_PRODUCTS } from "../components/home/mockCatalog.js";
 import "./Home.css";
 
-export default function Home({ isInitializingSession = false }) {
-  const [query, setQuery] = useState("");
+export default function Home() {
+  const [searchParams] = useSearchParams();
+  const query = searchParams.get("q") || "";
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -20,8 +21,6 @@ export default function Home({ isInitializingSession = false }) {
 
   return (
     <div className="home">
-      <Header onSearch={setQuery} initialQuery={query} isInitializingSession={isInitializingSession} />
-
       <main className="home__main">
         {/* 1) Carousel grande (hero) */}
         <HeroCarousel slides={HERO_SLIDES} />
