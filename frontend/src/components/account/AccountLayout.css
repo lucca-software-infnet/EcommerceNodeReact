@@ -1,0 +1,50 @@
+.accountLayout {
+  --accountSidebarWidth: 280px;
+
+  width: 100vw;
+  min-height: 100vh;
+  background: #0b1220; /* base escura atrás da sidebar */
+}
+
+.accountLayout__sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: var(--accountSidebarWidth);
+  height: 100vh;
+  background: #0f172a;
+  border-right: 1px solid rgba(148, 163, 184, 0.18);
+  overflow: hidden;
+  z-index: 10;
+}
+
+.accountLayout__main {
+  margin-left: var(--accountSidebarWidth);
+  min-height: 100vh;
+  height: 100vh;
+  overflow: auto;
+  background: #f6f8fc; /* conteúdo claro */
+}
+
+.accountLayout__mainInner {
+  padding: 22px 22px 40px;
+}
+
+@media (max-width: 900px) {
+  .accountLayout {
+    --accountSidebarWidth: 100%;
+  }
+
+  .accountLayout__sidebar {
+    position: sticky;
+    width: 100%;
+    height: auto;
+    inset: auto;
+  }
+
+  .accountLayout__main {
+    margin-left: 0;
+    height: auto;
+    min-height: 100vh;
+  }
+}
+
