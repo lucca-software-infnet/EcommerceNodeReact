@@ -103,12 +103,12 @@ export default function EditProduct() {
   };
 
   const goBackToProducts = () => {
-    navigate("/account", { state: { activeSection: "products" } });
+    navigate("/account?section=products");
   };
 
   const handleSelectSection = (key) => {
     // Na tela de edição, trocar seção significa voltar para /account e renderizar a seção à direita.
-    navigate("/account", { state: { activeSection: key } });
+    navigate(`/account?section=${encodeURIComponent(key)}`);
   };
 
   const handleSubmit = async (e) => {

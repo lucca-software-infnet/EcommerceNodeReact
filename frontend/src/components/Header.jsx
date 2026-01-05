@@ -76,7 +76,15 @@ export default function Header({ onSearch, initialQuery = "", isInitializingSess
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (isControlledSearch) onSearch(query);
+    const q = String(query || "").trim();
+    if (isControlledSearch) {
+      onSearch(q);
+      return;
+    }
+
+    // Header global: busca deve funcionar em qualquer página.
+    // Estratégia simples: navegar para a Home com query na URL.
+    navigate(q ? `/?q=${encodeURIComponent(q)}` : "/");
   };
 
   const go = (path) => {

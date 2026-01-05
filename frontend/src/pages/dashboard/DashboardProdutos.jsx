@@ -1,6 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Header from "../../components/Header.jsx";
 import { api } from "../../api/client.js";
 import "../account/Account.css";
 import ProdutoForm from "./produtos/ProdutoForm.jsx";
@@ -93,8 +92,6 @@ export default function DashboardProdutos() {
 
   return (
     <div className="account">
-      <Header />
-
       <main className="account__main">
         <div className="account__grid">
           {/* Sidebar */}
