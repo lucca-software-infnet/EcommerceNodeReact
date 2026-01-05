@@ -11,6 +11,7 @@ import ForgotPassword from "../pages/auth/ForgotPassword.jsx";
 import ResetPassword from "../pages/auth/ResetPassword.jsx";
 
 import Me from "../pages/account/Me.jsx";
+import EditProduct from "../pages/account/EditProduct.jsx";
 import DashboardProdutos from "../pages/dashboard/DashboardProdutos.jsx";
 import EditarProduto from "../pages/dashboard/EditarProduto.jsx";
 
@@ -32,6 +33,7 @@ export default function AppRoutes() {
       {/* Privado (e-commerce / conta) */}
       <Route element={<ProtectedRoute />}>
         <Route path="/account" element={<Me />} />
+        <Route path="/account/edit-product/:id" element={<EditProduct />} />
         <Route path="/cart" element={<ComingSoon title="Carrinho" />} />
         <Route path="/checkout" element={<ComingSoon title="Checkout" />} />
         <Route path="/orders" element={<ComingSoon title="Pedidos" />} />
