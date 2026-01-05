@@ -1,5 +1,4 @@
 import { Navigate, Route, Routes } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext.jsx";
 import ProtectedRoute from "./ProtectedRoute.jsx";
 import ComingSoon from "../components/ComingSoon.jsx";
 
@@ -15,13 +14,11 @@ import EditProduct from "../pages/account/EditProduct.jsx";
 import DashboardProdutos from "../pages/dashboard/DashboardProdutos.jsx";
 import EditarProduto from "../pages/dashboard/EditarProduto.jsx";
 
-export default function AppRoutes() {
-  const { isInitializing } = useAuth();
-
+export default function AppRoutes({ isInitializingSession = false }) {
   return (
     <Routes>
       {/* Home SEMPRE pública (nunca redireciona para /login automaticamente) */}
-      <Route path="/" element={<Home isInitializingSession={isInitializing} />} />
+      <Route path="/" element={<Home isInitializingSession={isInitializingSession} />} />
 
       {/* Público (auth) */}
       <Route path="/login" element={<Login />} />

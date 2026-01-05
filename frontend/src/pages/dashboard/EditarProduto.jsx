@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import Header from "../../components/Header.jsx";
 import { api } from "../../api/client.js";
 import "../account/Account.css";
 import ProdutoForm from "./produtos/ProdutoForm.jsx";
@@ -89,8 +88,6 @@ export default function EditarProduto() {
 
   return (
     <div className="account">
-      <Header />
-
       <main className="account__main">
         <div className="account-card">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>

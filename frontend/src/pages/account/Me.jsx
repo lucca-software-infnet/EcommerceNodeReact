@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import AccountLayout from "../../components/account/AccountLayout.jsx";
 import ProductsSection from "./sections/ProductsSection.jsx";
@@ -25,22 +25,13 @@ function SectionCard({ title, children }) {
 
 export default function Me() {
   const { user, logout, isInitializing } = useAuth();
-  const location = useLocation();
-  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const initialFromNav = useMemo(() => location?.state?.activeSection, [location?.state?.activeSection]);
-  const [activeSection, setActiveSection] = useState(initialFromNav || "account");
-
-  useEffect(() => {
-    if (!initialFromNav) return;
-    setActiveSection(initialFromNav);
-    // limpa o state para não ficar “grudado” se o usuário navegar de novo
-    navigate(location.pathname, { replace: true, state: {} });
-  }, [initialFromNav, location.pathname, navigate]);
+  const activeSection = useMemo(() => searchParams.get("section") || "account", [searchParams]);
 
   const handleSelectSection = (key) => {
     // REGRA: trocar conteúdo à direita sem mudar rota (/account)
-    setActiveSection(key);
+    setSearchParams({ section: key });
   };
 
   return (
