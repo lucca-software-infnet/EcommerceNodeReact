@@ -76,6 +76,7 @@ body {
 
 /* ===== BARRA DE BUSCA ===== */
 .shop-header__search {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -135,6 +136,50 @@ body {
 
 .shop-header__searchBtn:active {
   transform: translateY(0);
+}
+
+.shop-header__suggest {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border: 1px solid rgba(44, 62, 80, 0.12);
+  border-radius: 14px;
+  box-shadow: 0 14px 30px rgba(44, 62, 80, 0.12);
+  overflow: hidden;
+  z-index: 80;
+}
+
+.shop-header__suggestItem {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  cursor: pointer;
+  text-align: left;
+  color: #2c3e50;
+  font-weight: 700;
+}
+
+.shop-header__suggestItem:hover {
+  background: rgba(52, 152, 219, 0.09);
+  color: #2980b9;
+}
+
+.shop-header__suggestText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shop-header__suggestEmpty {
+  padding: 10px 12px;
+  color: #7f8c8d;
+  font-weight: 700;
 }
 
 .shop-header__searchIcon {

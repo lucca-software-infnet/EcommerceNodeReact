@@ -3,6 +3,7 @@ import ProtectedRoute from "./ProtectedRoute.jsx";
 import ComingSoon from "../components/ComingSoon.jsx";
 
 import Home from "../pages/Home.jsx";
+import Search from "../pages/Search.jsx";
 import Login from "../pages/auth/Login.jsx";
 import Register from "../pages/auth/Register.jsx";
 import Activate from "../pages/auth/Activate.jsx";
@@ -19,6 +20,7 @@ export default function AppRoutes({ isInitializingSession = false }) {
     <Routes>
       {/* Home SEMPRE pública (nunca redireciona para /login automaticamente) */}
       <Route path="/" element={<Home isInitializingSession={isInitializingSession} />} />
+      <Route path="/search" element={<Search />} />
 
       {/* Público (auth) */}
       <Route path="/login" element={<Login />} />

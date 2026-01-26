@@ -11,9 +11,19 @@ export default async function produtoRoutes(app) {
   // 📄 ROTAS PÚBLICAS
   // ======================
   
+  // Autocomplete / sugestões (até 10)
+  app.get("/produtos/sugestoes", produtoController.sugestoes);
+
+  // Produtos aleatórios para Home
+  app.get("/produtos/random", produtoController.listarAleatorios);
+
+  // 1 produto aleatório por departamento (categoria)
+  app.get("/produtos/random-por-departamento", produtoController.listarAleatorioPorDepartamento);
+
+  // Busca por termo (alias explícito)
+  app.get("/produtos/search", produtoController.listarProdutos);
+
   app.get("/produtos", produtoController.listarProdutos);
-  
-  app.get("/produtos/:id", produtoController.buscarProduto);
   
   // ======================
   // 🔐 ROTAS AUTENTICADAS
@@ -38,6 +48,9 @@ export default async function produtoRoutes(app) {
   app.get("/produtos/vendedor/meus", {
     preHandler: [authMiddleware]
   }, produtoController.meusProdutos);
+
+  // Detalhe do produto (mantém por último para não conflitar com rotas estáticas)
+  app.get("/produtos/:id", produtoController.buscarProduto);
   
   // ======================
   // 🖼️ UPLOAD DE IMAGENS

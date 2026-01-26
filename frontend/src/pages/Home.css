@@ -222,6 +222,20 @@
   scroll-snap-align: start;
 }
 
+.category-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.category-tile__title {
+  color: #2c3e50;
+  font-weight: 900;
+  font-size: 14px;
+  padding: 0 2px;
+  text-align: left;
+}
+
 .product-card {
   background: #ffffff;
   border-radius: 16px;

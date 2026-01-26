@@ -45,6 +45,54 @@ class ProdutoController {
       });
     }
   }
+
+  async sugestoes(req, reply) {
+    try {
+      const data = await produtoService.sugerirProdutos(req.query);
+      return reply.send({
+        success: true,
+        data,
+        count: data.length,
+      });
+    } catch (error) {
+      const status = error.statusCode || 500;
+      return reply.code(status).send({
+        error: error.message,
+      });
+    }
+  }
+
+  async listarAleatorios(req, reply) {
+    try {
+      const data = await produtoService.listarProdutosAleatorios(req.query);
+      return reply.send({
+        success: true,
+        data,
+        count: data.length,
+      });
+    } catch (error) {
+      const status = error.statusCode || 500;
+      return reply.code(status).send({
+        error: error.message,
+      });
+    }
+  }
+
+  async listarAleatorioPorDepartamento(req, reply) {
+    try {
+      const data = await produtoService.listarUmProdutoAleatorioPorDepartamento();
+      return reply.send({
+        success: true,
+        data,
+        count: data.length,
+      });
+    } catch (error) {
+      const status = error.statusCode || 500;
+      return reply.code(status).send({
+        error: error.message,
+      });
+    }
+  }
   
   async buscarProduto(req, reply) {
     try {
