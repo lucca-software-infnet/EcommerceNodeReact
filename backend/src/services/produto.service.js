@@ -143,6 +143,80 @@ function toProdutoDTO(produto, baseUrl = '/uploads/products') {
 // ======================
 
 class ProdutoService {
+  /**
+   * Busca (página de resultados) com match em descricao/marca/departamento/codigoBarra
+   * usando comparação case-insensitive (LOWER) para comportamento consistente.
+   */
+  async buscarProdutosPublicos(filters = {}) {
+    try {
+      const q = normalizeString(filters.q, "Termo de busca", true);
+      const page = Math.max(asNonNegativeInt(filters.page || 1, "Página"), 1);
+      const limit = Math.min(Math.max(asNonNegativeInt(filters.limit || 24, "Limite"), 1), 100);
+      const skip = (page - 1) * limit;
+
+      if (!q) {
+        return {
+          metadata: { page, limit, total: 0, pages: 0 },
+          data: [],
+        };
+      }
+
+      const like = `%${q}%`;
+
+      const totalRows = await prisma.$queryRaw`
+        SELECT COUNT(*) as total
+        FROM Produto
+        WHERE quantidade > 0
+          AND (
+            LOWER(descricao) LIKE LOWER(${like})
+            OR LOWER(departamento) LIKE LOWER(${like})
+            OR LOWER(COALESCE(marca, '')) LIKE LOWER(${like})
+            OR codigoBarra LIKE ${like}
+          )
+      `;
+      const total = Number(totalRows?.[0]?.total ?? 0);
+
+      const idsRows = await prisma.$queryRaw`
+        SELECT id
+        FROM Produto
+        WHERE quantidade > 0
+          AND (
+            LOWER(descricao) LIKE LOWER(${like})
+            OR LOWER(departamento) LIKE LOWER(${like})
+            OR LOWER(COALESCE(marca, '')) LIKE LOWER(${like})
+            OR codigoBarra LIKE ${like}
+          )
+        ORDER BY
+          (LOCATE(LOWER(${q}), LOWER(descricao)) = 1) DESC,
+          (LOCATE(LOWER(${q}), LOWER(COALESCE(marca, ''))) = 1) DESC,
+          (LOCATE(LOWER(${q}), LOWER(descricao)) = 0) ASC,
+          LOCATE(LOWER(${q}), LOWER(descricao)) ASC,
+          CHAR_LENGTH(descricao) ASC
+        LIMIT ${limit} OFFSET ${skip}
+      `;
+
+      const ids = (idsRows || []).map((r) => r.id);
+      if (!ids.length) {
+        return {
+          metadata: { page, limit, total, pages: Math.ceil(total / limit) },
+          data: [],
+        };
+      }
+
+      const produtos = await prisma.produto.findMany({
+        where: { id: { in: ids } },
+        select: PRODUTO_SELECT,
+      });
+      const byId = new Map(produtos.map((p) => [p.id, p]));
+
+      return {
+        metadata: { page, limit, total, pages: Math.ceil(total / limit) },
+        data: ids.map((id) => toProdutoDTO(byId.get(id))).filter(Boolean),
+      };
+    } catch (error) {
+      throw new AppError("Erro ao buscar produtos: " + error.message, 500);
+    }
+  }
   
   /**
    * Registra movimento de estoque
@@ -630,19 +704,20 @@ class ProdutoService {
       // - depois prioriza menor posição do termo
       // - e descrições mais curtas
       const rows = await prisma.$queryRaw`
-        SELECT id, descricao, departamento
+        SELECT id, descricao, departamento, marca
         FROM Produto
         WHERE quantidade > 0
           AND (
-            descricao LIKE ${like}
-            OR departamento LIKE ${like}
-            OR marca LIKE ${like}
+            LOWER(descricao) LIKE LOWER(${like})
+            OR LOWER(departamento) LIKE LOWER(${like})
+            OR LOWER(COALESCE(marca, '')) LIKE LOWER(${like})
             OR codigoBarra LIKE ${like}
           )
         ORDER BY
-          (LOCATE(${q}, descricao) = 1) DESC,
-          (LOCATE(${q}, descricao) = 0) ASC,
-          LOCATE(${q}, descricao) ASC,
+          (LOCATE(LOWER(${q}), LOWER(descricao)) = 1) DESC,
+          (LOCATE(LOWER(${q}), LOWER(COALESCE(marca, ''))) = 1) DESC,
+          (LOCATE(LOWER(${q}), LOWER(descricao)) = 0) ASC,
+          LOCATE(LOWER(${q}), LOWER(descricao)) ASC,
           CHAR_LENGTH(descricao) ASC
         LIMIT ${limit}
       `;
@@ -651,6 +726,7 @@ class ProdutoService {
         id: r.id,
         descricao: r.descricao,
         departamento: r.departamento,
+        marca: r.marca,
       }));
     } catch (error) {
       throw new AppError("Erro ao sugerir produtos: " + error.message, 500);

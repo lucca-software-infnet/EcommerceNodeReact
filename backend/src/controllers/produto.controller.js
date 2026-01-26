@@ -93,6 +93,21 @@ class ProdutoController {
       });
     }
   }
+
+  async buscarProdutos(req, reply) {
+    try {
+      const result = await produtoService.buscarProdutosPublicos(req.query);
+      return reply.send({
+        success: true,
+        ...result,
+      });
+    } catch (error) {
+      const status = error.statusCode || 500;
+      return reply.code(status).send({
+        error: error.message,
+      });
+    }
+  }
   
   async buscarProduto(req, reply) {
     try {

@@ -21,7 +21,7 @@ export default async function produtoRoutes(app) {
   app.get("/produtos/random-por-departamento", produtoController.listarAleatorioPorDepartamento);
 
   // Busca por termo (alias explícito)
-  app.get("/produtos/search", produtoController.listarProdutos);
+  app.get("/produtos/search", produtoController.buscarProdutos);
 
   app.get("/produtos", produtoController.listarProdutos);
   

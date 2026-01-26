@@ -11,9 +11,20 @@ export function toCatalogProduct(apiProduto) {
         ? Number(apiProduto.precoVenda)
         : null;
 
+  const descricao = String(apiProduto.descricao ?? "").trim();
+  const marca = String(apiProduto.marca ?? "").trim();
+
+  let name = descricao;
+  if (marca) {
+    const d = descricao.toLowerCase();
+    const m = marca.toLowerCase();
+    // evita duplicar marca se já estiver na descrição
+    name = d.includes(m) ? descricao : `${marca} ${descricao}`.trim();
+  }
+
   return {
     id: String(apiProduto.id),
-    name: apiProduto.descricao ?? "",
+    name,
     price: Number.isFinite(priceNum) ? priceNum : 0,
     category: apiProduto.departamento ?? "",
     seed: apiProduto.id ?? 0,

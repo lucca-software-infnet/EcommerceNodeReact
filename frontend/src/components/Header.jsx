@@ -91,6 +91,15 @@ export default function Header({ initialQuery = "", isInitializingSession = fals
     navigate(q ? `/search?q=${encodeURIComponent(q)}` : "/");
   };
 
+  const suggestionLabel = (s) => {
+    const descricao = String(s?.descricao || "").trim();
+    const marca = String(s?.marca || "").trim();
+    if (!marca) return descricao;
+    const d = descricao.toLowerCase();
+    const m = marca.toLowerCase();
+    return d.includes(m) ? descricao : `${marca} ${descricao}`.trim();
+  };
+
   useEffect(() => {
     let cancelled = false;
     const q = String(debouncedQuery || "").trim();
@@ -207,14 +216,14 @@ export default function Header({ initialQuery = "", isInitializingSession = fals
                       ev.preventDefault();
                     }}
                     onClick={() => {
-                      const next = String(s?.descricao || "").trim();
+                      const next = suggestionLabel(s);
                       setQuery(next);
                       setIsSuggestOpen(false);
                       navigate(next ? `/search?q=${encodeURIComponent(next)}` : "/");
                     }}
-                    title={s?.descricao}
+                    title={suggestionLabel(s)}
                   >
-                    <span className="shop-header__suggestText">{s?.descricao}</span>
+                    <span className="shop-header__suggestText">{suggestionLabel(s)}</span>
                   </button>
                 ))
               ) : (
