@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext.jsx";
+import { api } from "../api/client.js";
+import { useDebouncedValue } from "../hooks/useDebouncedValue.js";
 import "./Header.css";
 
 function getFullName(user) {
@@ -42,12 +44,20 @@ export default function Header({ onSearch, initialQuery = "", isInitializingSess
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuth();
 
-  const isControlledSearch = typeof onSearch === "function";
-  const [uncontrolledQuery, setUncontrolledQuery] = useState(initialQuery);
+  const [query, setQuery] = useState(initialQuery);
+  const debouncedQuery = useDebouncedValue(query, 250);
+
+  const [suggestions, setSuggestions] = useState([]);
+  const [isSuggestOpen, setIsSuggestOpen] = useState(false);
+  const [isSuggestLoading, setIsSuggestLoading] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef(null);
+  const blurTimerRef = useRef(null);
 
-  const query = isControlledSearch ? initialQuery : uncontrolledQuery;
+  useEffect(() => {
+    // Mantém o input sincronizado com a URL atual (ex: /search?q=...)
+    setQuery(initialQuery || "");
+  }, [initialQuery]);
 
   useEffect(() => {
     if (!isMenuOpen) return;
@@ -77,15 +87,40 @@ export default function Header({ onSearch, initialQuery = "", isInitializingSess
   const handleSubmit = (e) => {
     e.preventDefault();
     const q = String(query || "").trim();
-    if (isControlledSearch) {
-      onSearch(q);
-      return;
+    setIsSuggestOpen(false);
+    navigate(q ? `/search?q=${encodeURIComponent(q)}` : "/");
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    const q = String(debouncedQuery || "").trim();
+
+    async function run() {
+      if (!isSuggestOpen) return;
+      if (!q) {
+        setSuggestions([]);
+        return;
+      }
+
+      setIsSuggestLoading(true);
+      try {
+        const res = await api.get("/produtos/sugestoes", { params: { q, limit: 10 } });
+        if (cancelled) return;
+        const data = Array.isArray(res?.data?.data) ? res.data.data : [];
+        setSuggestions(data.slice(0, 10));
+      } catch {
+        if (cancelled) return;
+        setSuggestions([]);
+      } finally {
+        if (!cancelled) setIsSuggestLoading(false);
+      }
     }
 
-    // Header global: busca deve funcionar em qualquer página.
-    // Estratégia simples: navegar para a Home com query na URL.
-    navigate(q ? `/?q=${encodeURIComponent(q)}` : "/");
-  };
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedQuery, isSuggestOpen]);
 
   const go = (path) => {
     setIsMenuOpen(false);
@@ -105,8 +140,26 @@ export default function Header({ onSearch, initialQuery = "", isInitializingSess
             value={query}
             onChange={(e) => {
               const next = e.target.value;
-              if (isControlledSearch) onSearch(next);
-              else setUncontrolledQuery(next);
+              setQuery(next);
+
+              const trimmed = String(next || "").trim();
+              if (!trimmed) {
+                setIsSuggestOpen(false);
+                setSuggestions([]);
+              } else {
+                setIsSuggestOpen(true);
+              }
+            }}
+            onFocus={() => {
+              if (blurTimerRef.current) clearTimeout(blurTimerRef.current);
+              const trimmed = String(query || "").trim();
+              if (trimmed) setIsSuggestOpen(true);
+            }}
+            onBlur={() => {
+              // Pequeno delay para permitir clique nas sugestões sem "piscar"
+              blurTimerRef.current = setTimeout(() => {
+                setIsSuggestOpen(false);
+              }, 120);
             }}
             className="shop-header__searchInput"
             placeholder="Buscar produtos, marcas e categorias..."
@@ -137,6 +190,38 @@ export default function Header({ onSearch, initialQuery = "", isInitializingSess
             </svg>
             <span className="shop-header__srOnly">Buscar</span>
           </button>
+
+          {isSuggestOpen && String(query || "").trim() ? (
+            <div className="shop-header__suggest" role="listbox" aria-label="Sugestões de busca">
+              {isSuggestLoading ? (
+                <div className="shop-header__suggestEmpty">Buscando...</div>
+              ) : suggestions.length ? (
+                suggestions.slice(0, 10).map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    className="shop-header__suggestItem"
+                    role="option"
+                    onMouseDown={(ev) => {
+                      // evita o blur do input antes do click
+                      ev.preventDefault();
+                    }}
+                    onClick={() => {
+                      const next = String(s?.descricao || "").trim();
+                      setQuery(next);
+                      setIsSuggestOpen(false);
+                      navigate(next ? `/search?q=${encodeURIComponent(next)}` : "/");
+                    }}
+                    title={s?.descricao}
+                  >
+                    <span className="shop-header__suggestText">{s?.descricao}</span>
+                  </button>
+                ))
+              ) : (
+                <div className="shop-header__suggestEmpty">Nenhuma sugestão.</div>
+              )}
+            </div>
+          ) : null}
         </form>
 
         <div className="shop-header__right" ref={menuRef}>

@@ -1,23 +1,56 @@
-import { useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
 import HeroCarousel from "../components/home/HeroCarousel.jsx";
 import CategoryCarousel from "../components/home/CategoryCarousel.jsx";
 import ProductCard from "../components/home/ProductCard.jsx";
-import { HERO_SLIDES, MOCK_PRODUCTS } from "../components/home/mockCatalog.js";
+import { HERO_SLIDES } from "../components/home/mockCatalog.js";
+import { api } from "../api/client.js";
+import { toCatalogProduct } from "../utils/productAdapter.js";
 import "./Home.css";
 
 export default function Home() {
-  const [searchParams] = useSearchParams();
-  const query = searchParams.get("q") || "";
+  const [products, setProducts] = useState([]);
+  const [categoryItems, setCategoryItems] = useState([]);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return MOCK_PRODUCTS;
-    return MOCK_PRODUCTS.filter((p) => p.name.toLowerCase().includes(q));
-  }, [query]);
+  useEffect(() => {
+    let cancelled = false;
 
-  const first = filtered.slice(0, 8);
-  const second = filtered.slice(8, 16);
+    async function load() {
+      try {
+        const [randomRes, byDeptRes] = await Promise.all([
+          api.get("/produtos/random", { params: { limit: 16 } }),
+          api.get("/produtos/random-por-departamento"),
+        ]);
+
+        if (cancelled) return;
+
+        const random = Array.isArray(randomRes?.data?.data) ? randomRes.data.data : [];
+        setProducts(random.map(toCatalogProduct).filter(Boolean));
+
+        const byDept = Array.isArray(byDeptRes?.data?.data) ? byDeptRes.data.data : [];
+        setCategoryItems(
+          byDept
+            .map((item) => ({
+              category: item?.departamento || "",
+              product: toCatalogProduct(item?.produto),
+            }))
+            .filter((x) => x.category && x.product)
+        );
+      } catch {
+        // Home deve ser resiliente: mantém vazio se API falhar.
+        if (cancelled) return;
+        setProducts([]);
+        setCategoryItems([]);
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const first = useMemo(() => products.slice(0, 8), [products]);
+  const second = useMemo(() => products.slice(8, 16), [products]);
 
   return (
     <div className="home">
@@ -29,7 +62,7 @@ export default function Home() {
         <section className="home-section" aria-label="Ofertas em destaque">
           <div className="home-section__head">
             <h2 className="home-section__title">Destaques para você</h2>
-            <div className="home-section__count">{filtered.length} itens</div>
+            <div className="home-section__count">{products.length} itens</div>
           </div>
 
           <div className="home-rowGrid">
@@ -45,7 +78,7 @@ export default function Home() {
         </section>
 
         {/* 3) Carousel menor por categoria */}
-        <CategoryCarousel products={filtered} />
+        <CategoryCarousel items={categoryItems} />
 
         {/* 4) Novamente duas linhas horizontais (4 cards cada) */}
         <section className="home-section" aria-label="Mais ofertas">

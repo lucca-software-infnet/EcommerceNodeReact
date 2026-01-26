@@ -612,6 +612,131 @@ class ProdutoService {
       throw new AppError('Erro ao buscar produtos do vendedor', 500);
     }
   }
+
+  /**
+   * Sugestões (autocomplete) - retorna até N produtos mais próximos do termo.
+   * Importante: retorna payload mínimo para UX (id/descricao/departamento).
+   */
+  async sugerirProdutos(filters = {}) {
+    try {
+      const q = normalizeString(filters.q, "Termo de busca", true);
+      if (!q) return [];
+
+      const limit = Math.min(Math.max(asNonNegativeInt(filters.limit ?? 10, "Limite"), 1), 10);
+      const like = `%${q}%`;
+
+      // Estratégia simples de "similaridade" com MySQL:
+      // - prioriza match no começo da descrição
+      // - depois prioriza menor posição do termo
+      // - e descrições mais curtas
+      const rows = await prisma.$queryRaw`
+        SELECT id, descricao, departamento
+        FROM Produto
+        WHERE quantidade > 0
+          AND (
+            descricao LIKE ${like}
+            OR departamento LIKE ${like}
+            OR marca LIKE ${like}
+            OR codigoBarra LIKE ${like}
+          )
+        ORDER BY
+          (LOCATE(${q}, descricao) = 1) DESC,
+          (LOCATE(${q}, descricao) = 0) ASC,
+          LOCATE(${q}, descricao) ASC,
+          CHAR_LENGTH(descricao) ASC
+        LIMIT ${limit}
+      `;
+
+      return (rows || []).map((r) => ({
+        id: r.id,
+        descricao: r.descricao,
+        departamento: r.departamento,
+      }));
+    } catch (error) {
+      throw new AppError("Erro ao sugerir produtos: " + error.message, 500);
+    }
+  }
+
+  /**
+   * Produtos aleatórios para Home (ex: Destaques / Você também pode gostar).
+   */
+  async listarProdutosAleatorios(filters = {}) {
+    try {
+      const limit = Math.min(Math.max(asNonNegativeInt(filters.limit ?? 16, "Limite"), 1), 60);
+
+      const rows = await prisma.$queryRaw`
+        SELECT id
+        FROM Produto
+        WHERE quantidade > 0
+        ORDER BY RAND()
+        LIMIT ${limit}
+      `;
+
+      const ids = (rows || []).map((r) => r.id);
+      if (!ids.length) return [];
+
+      const produtos = await prisma.produto.findMany({
+        where: { id: { in: ids } },
+        select: PRODUTO_SELECT,
+      });
+
+      const byId = new Map(produtos.map((p) => [p.id, p]));
+      return ids.map((id) => toProdutoDTO(byId.get(id))).filter(Boolean);
+    } catch (error) {
+      throw new AppError("Erro ao listar produtos aleatórios: " + error.message, 500);
+    }
+  }
+
+  /**
+   * 1 produto aleatório por departamento (categoria).
+   * Retorna [{ departamento, produto }]
+   */
+  async listarUmProdutoAleatorioPorDepartamento() {
+    try {
+      const departamentos = await prisma.produto.findMany({
+        where: { quantidade: { gt: 0 } },
+        distinct: ["departamento"],
+        select: { departamento: true },
+        orderBy: { departamento: "asc" },
+      });
+
+      const deptList = departamentos.map((d) => d.departamento).filter(Boolean);
+      if (!deptList.length) return [];
+
+      const randomIds = await Promise.all(
+        deptList.map(async (departamento) => {
+          const rows = await prisma.$queryRaw`
+            SELECT id
+            FROM Produto
+            WHERE quantidade > 0 AND departamento = ${departamento}
+            ORDER BY RAND()
+            LIMIT 1
+          `;
+          return { departamento, id: rows?.[0]?.id ?? null };
+        })
+      );
+
+      const ids = randomIds.map((x) => x.id).filter(Boolean);
+      if (!ids.length) return [];
+
+      const produtos = await prisma.produto.findMany({
+        where: { id: { in: ids } },
+        select: PRODUTO_SELECT,
+      });
+
+      const byId = new Map(produtos.map((p) => [p.id, p]));
+
+      return randomIds
+        .filter((x) => x.id)
+        .map((x) => ({
+          departamento: x.departamento,
+          produto: toProdutoDTO(byId.get(x.id)),
+        }))
+        .filter((x) => x.produto);
+    } catch (error) {
+      throw new AppError("Erro ao listar por departamento: " + error.message, 500);
+    }
+  }
 }
 
 export default new ProdutoService();
