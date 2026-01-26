@@ -40,7 +40,7 @@ function svgAvatarDataUrl(initials) {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
-export default function Header({ onSearch, initialQuery = "", isInitializingSession = false }) {
+export default function Header({ initialQuery = "", isInitializingSession = false }) {
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuth();
 
