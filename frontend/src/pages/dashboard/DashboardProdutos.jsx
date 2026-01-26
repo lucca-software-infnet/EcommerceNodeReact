@@ -1,7 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../api/client.js";
-import "../account/Account.css";
 import ProdutoForm from "./produtos/ProdutoForm.jsx";
 import ProdutosList from "./produtos/ProdutosList.jsx";
 
@@ -21,7 +20,6 @@ export default function DashboardProdutos() {
     setIsLoadingList(true);
     setNotice({ type: "", message: "" });
     try {
-      // Endpoint real para "meus produtos" (dashboard)
       const res = await api.get("/produtos/vendedor/meus");
       setProdutos(res?.data?.data || []);
     } catch (err) {
@@ -54,7 +52,6 @@ export default function DashboardProdutos() {
         const created = await api.post("/produtos", produtoPayload);
         const produtoId = created?.data?.data?.id;
 
-        // Upload de imagens (tabela ImagemProduto) via endpoint existente
         if (produtoId && imagens?.length) {
           const fd = new FormData();
           imagens.slice(0, 5).forEach((file) => fd.append("files", file));
@@ -91,95 +88,205 @@ export default function DashboardProdutos() {
   );
 
   return (
-    <div className="account">
-      <main className="account__main">
-        <div className="account__grid">
-          {/* Sidebar */}
-          <aside
-            className="account-card"
-            style={{ position: "sticky", top: 76, alignSelf: "start", height: "fit-content" }}
-            aria-label="Menu do dashboard"
-          >
-            <h2 className="account-links__title" style={{ marginBottom: 10 }}>
+    <div style={{ 
+      padding: "20px", 
+      minHeight: "100vh",
+      backgroundColor: "#f6f8fc" 
+    }}>
+      <div style={{ 
+        display: "flex", 
+        gap: "20px", 
+        maxWidth: "1200px", 
+        margin: "0 auto" 
+      }}>
+        {/* Sidebar */}
+        <aside style={{ 
+          width: "250px",
+          flexShrink: 0,
+          position: "sticky",
+          top: "20px",
+          alignSelf: "flex-start"
+        }}>
+          <div style={{ 
+            backgroundColor: "white", 
+            borderRadius: "12px",
+            padding: "20px",
+            boxShadow: "0 2px 10px rgba(0,0,0,0.05)"
+          }}>
+            <h2 style={{ 
+              margin: "0 0 20px 0", 
+              color: "#2c3e50", 
+              fontSize: "18px", 
+              fontWeight: "bold" 
+            }}>
               Dashboard
             </h2>
 
-            <nav className="account-links" aria-label="Atalhos">
+            <nav style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
               {sidebarItems.map((it) => (
-                <Link key={it.to} className="account-link" to={it.to}>
-                  {it.label} <span className="account-link__chev">›</span>
+                <Link 
+                  key={it.to} 
+                  to={it.to}
+                  style={{
+                    padding: "12px 16px",
+                    borderRadius: "8px",
+                    textDecoration: "none",
+                    color: "#2c3e50",
+                    fontWeight: "600",
+                    backgroundColor: "rgba(52, 152, 219, 0.05)",
+                    transition: "all 0.2s ease"
+                  }}
+                  onMouseEnter={(e) => e.target.style.backgroundColor = "rgba(52, 152, 219, 0.1)"}
+                  onMouseLeave={(e) => e.target.style.backgroundColor = "rgba(52, 152, 219, 0.05)"}
+                >
+                  {it.label}
                 </Link>
               ))}
 
-              {/* Accordion Produtos */}
-              <div className="account-card" style={{ padding: 12 }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                  <div style={{ fontWeight: 900, color: "#2c3e50" }}>Produtos</div>
-                  <span style={{ color: "rgba(44, 62, 80, 0.55)", fontWeight: 900 }}>▾</span>
+              {/* Seção Produtos */}
+              <div style={{ 
+                marginTop: "20px",
+                padding: "16px",
+                borderRadius: "8px",
+                backgroundColor: "rgba(52, 152, 219, 0.03)",
+                border: "1px solid rgba(52, 152, 219, 0.1)"
+              }}>
+                <div style={{ 
+                  display: "flex", 
+                  alignItems: "center", 
+                  justifyContent: "space-between", 
+                  marginBottom: "12px" 
+                }}>
+                  <div style={{ 
+                    fontWeight: "bold", 
+                    color: "#2c3e50",
+                    fontSize: "16px"
+                  }}>
+                    Produtos
+                  </div>
                 </div>
 
-                <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                   <button
                     type="button"
-                    className="product-card__btn"
                     onClick={() => setActive("add")}
-                    aria-pressed={active === "add"}
-                    style={{ background: active === "add" ? "rgba(52, 152, 219, 0.18)" : undefined }}
+                    style={{
+                      padding: "12px",
+                      border: "none",
+                      borderRadius: "8px",
+                      backgroundColor: active === "add" ? "rgba(52, 152, 219, 0.2)" : "rgba(52, 152, 219, 0.1)",
+                      color: "#2c3e50",
+                      fontWeight: "600",
+                      cursor: "pointer",
+                      fontSize: "14px",
+                      transition: "all 0.2s ease"
+                    }}
                   >
                     Adicionar Produto
                   </button>
                   <button
                     type="button"
-                    className="product-card__btn"
                     onClick={() => setActive("list")}
-                    aria-pressed={active === "list"}
-                    style={{ background: active === "list" ? "rgba(52, 152, 219, 0.18)" : undefined }}
+                    style={{
+                      padding: "12px",
+                      border: "none",
+                      borderRadius: "8px",
+                      backgroundColor: active === "list" ? "rgba(52, 152, 219, 0.2)" : "rgba(52, 152, 219, 0.1)",
+                      color: "#2c3e50",
+                      fontWeight: "600",
+                      cursor: "pointer",
+                      fontSize: "14px",
+                      transition: "all 0.2s ease"
+                    }}
                   >
-                    Mostrar Produtos
+                    Meus Produtos
                   </button>
                 </div>
               </div>
             </nav>
-          </aside>
+          </div>
+        </aside>
 
-          {/* Conteúdo */}
-          <section className="account-card" aria-label="Conteúdo do dashboard">
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-              <h1 style={{ margin: 0, color: "#2c3e50", fontSize: 18, fontWeight: 900 }}>
-                {active === "add" ? "Adicionar Produto" : "Mostrar Produtos"}
+        {/* Conteúdo Principal */}
+        <main style={{ flex: 1 }}>
+          <div style={{ 
+            backgroundColor: "white", 
+            borderRadius: "12px",
+            padding: "24px",
+            boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
+            minHeight: "500px"
+          }}>
+            <div style={{ 
+              display: "flex", 
+              alignItems: "center", 
+              justifyContent: "space-between", 
+              marginBottom: "24px",
+              paddingBottom: "16px",
+              borderBottom: "1px solid rgba(44, 62, 80, 0.1)"
+            }}>
+              <h1 style={{ 
+                margin: 0, 
+                color: "#2c3e50", 
+                fontSize: "24px", 
+                fontWeight: "bold" 
+              }}>
+                {active === "add" ? "Adicionar Novo Produto" : "Meus Produtos"}
               </h1>
 
-              {active === "list" ? (
-                <button type="button" className="shop-header__loginBtn" onClick={() => fetchProdutos()} disabled={isLoadingList}>
-                  Atualizar
+              {active === "list" && (
+                <button 
+                  type="button" 
+                  onClick={() => fetchProdutos()} 
+                  disabled={isLoadingList}
+                  style={{
+                    padding: "10px 20px",
+                    border: "none",
+                    borderRadius: "8px",
+                    backgroundColor: "#3498db",
+                    color: "white",
+                    fontWeight: "600",
+                    cursor: "pointer",
+                    fontSize: "14px"
+                  }}
+                >
+                  {isLoadingList ? "Carregando..." : "Atualizar"}
                 </button>
-              ) : null}
+              )}
             </div>
 
-            {notice?.message ? (
-              <div style={{ marginTop: 12, color: notice.type === "error" ? "crimson" : "#2c3e50", fontWeight: 800 }}>
+            {notice?.message && (
+              <div style={{ 
+                marginBottom: "20px",
+                padding: "12px 16px",
+                borderRadius: "8px",
+                backgroundColor: notice.type === "error" ? "rgba(231, 76, 60, 0.1)" : "rgba(52, 152, 219, 0.1)",
+                color: notice.type === "error" ? "#c0392b" : "#2c3e50",
+                fontWeight: "600"
+              }}>
                 {notice.message}
               </div>
-            ) : null}
+            )}
 
-            {active === "add" ? (
-              <div style={{ marginTop: 14 }}>
-                <ProdutoForm mode="create" isBusy={isBusy} onSubmit={handleCreate} onCancel={() => navigate("/dashboard/produtos")} />
-              </div>
-            ) : (
-              <div style={{ marginTop: 14 }}>
+            <div style={{ marginTop: "20px" }}>
+              {active === "add" ? (
+                <ProdutoForm 
+                  mode="create" 
+                  isBusy={isBusy} 
+                  onSubmit={handleCreate} 
+                  onCancel={() => navigate("/dashboard/produtos")} 
+                />
+              ) : (
                 <ProdutosList
                   produtos={produtos}
                   isLoading={isLoadingList}
                   onEdit={(id) => navigate(`/dashboard/produtos/editar/${id}`)}
                   onDelete={handleDelete}
                 />
-              </div>
-            )}
-          </section>
-        </div>
-      </main>
+              )}
+            </div>
+          </div>
+        </main>
+      </div>
     </div>
   );
 }
-

@@ -18,11 +18,9 @@ export default function AccountLayout({
           onLogout={onLogout}
         />
       </aside>
-
       <main className="accountLayout__main" aria-label="Conteúdo da conta">
         <div className="accountLayout__mainInner">{children}</div>
       </main>
     </div>
   );
 }
-

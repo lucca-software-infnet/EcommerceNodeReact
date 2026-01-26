@@ -1,6 +1,7 @@
 .home {
   min-height: 100vh;
   background: #f5f5f5;
+  border: 2px solid purple;
 }
 
 .home__main {

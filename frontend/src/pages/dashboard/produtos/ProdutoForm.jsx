@@ -1,6 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import "../../../pages/Home.css";
-import "../../../styles/Login.css";
 
 function asIntOrEmpty(value) {
   if (value === "" || value === null || value === undefined) return "";
@@ -17,13 +15,12 @@ function asString(value) {
 function resolveUploadUrl(url) {
   if (!url) return "";
   if (String(url).startsWith("http://") || String(url).startsWith("https://")) return String(url);
-  // Preferimos usar proxy do Vite (/uploads -> backend)
   if (String(url).startsWith("/uploads/")) return String(url);
   return String(url);
 }
 
 export default function ProdutoForm({
-  mode, // create | edit
+  mode,
   isBusy,
   initialValues,
   existingImages = [],
@@ -44,7 +41,7 @@ export default function ProdutoForm({
     departamento: initialValues?.departamento ?? "",
   }));
 
-  const [selectedFiles, setSelectedFiles] = useState([]); // File[]
+  const [selectedFiles, setSelectedFiles] = useState([]);
   const fileInputRef = useRef(null);
 
   const previews = useMemo(
@@ -73,7 +70,7 @@ export default function ProdutoForm({
 
     setSelectedFiles((prev) => {
       const merged = [...prev, ...files];
-      return merged.slice(0, 5); // requisito: máximo 5
+      return merged.slice(0, 5);
     });
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
@@ -87,14 +84,12 @@ export default function ProdutoForm({
     if (typeof onSubmit !== "function") return;
 
     const payload = {
-      // Produto (schema.prisma)
       codigoBarra: asString(values.codigoBarra).trim(),
       descricao: asString(values.descricao).trim(),
       departamento: asString(values.departamento).trim(),
       marca: asString(values.marca).trim() || null,
       validade: values.validade ? new Date(values.validade).toISOString() : null,
       volume: Number(values.volume),
-      // quantidade é opcional no create (default 0); no edit pode ser alterada.
       ...(values.quantidade === "" ? {} : { quantidade: Number(values.quantidade) }),
       precoCusto: asString(values.precoCusto).trim(),
       precoVenda: asString(values.precoVenda).trim(),
@@ -104,68 +99,299 @@ export default function ProdutoForm({
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-        <div className="form-group">
-          <label>Código de barras (codigoBarra)</label>
-          <input value={values.codigoBarra} onChange={update("codigoBarra")} placeholder="Ex: 789..." required />
+
+    <div style={{ width: "100%" }}>
+      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+
+        {/* FORMULÁRIO EM GRID ORGANIZADO */}
+        <div style={{ 
+          display: "grid", 
+          gridTemplateColumns: "repeat(2, 1fr)", 
+          gap: "20px" 
+        }}>
+          
+          {/* Coluna 1 */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+            {/* Código de Barras */}
+            <div>
+              <label style={{ 
+                display: "block", 
+                marginBottom: "8px", 
+                color: "#2c3e50", 
+                fontWeight: "600", 
+                fontSize: "14px" 
+              }}>
+                Código de barras <span style={{ color: "#e74c3c" }}>*</span>
+              </label>
+              <input
+                style={{
+                  width: "100%",
+                  height: "48px",
+                  padding: "0 14px",
+                  border: "1.5px solid rgba(44, 62, 80, 0.16)",
+                  borderRadius: "8px",
+                  fontSize: "15px",
+                  boxSizing: "border-box"
+                }}
+                value={values.codigoBarra}
+                onChange={update("codigoBarra")}
+                placeholder="Ex: 789..."
+                required
+                disabled={isBusy}
+              />
+            </div>
+
+            {/* Departamento */}
+            <div>
+              <label style={{ 
+                display: "block", 
+                marginBottom: "8px", 
+                color: "#2c3e50", 
+                fontWeight: "600", 
+                fontSize: "14px" 
+              }}>
+                Departamento <span style={{ color: "#e74c3c" }}>*</span>
+              </label>
+              <input
+                style={{
+                  width: "100%",
+                  height: "48px",
+                  padding: "0 14px",
+                  border: "1.5px solid rgba(44, 62, 80, 0.16)",
+                  borderRadius: "8px",
+                  fontSize: "15px",
+                  boxSizing: "border-box"
+                }}
+                value={values.departamento}
+                onChange={update("departamento")}
+                placeholder="Ex: Bebidas"
+                required
+                disabled={isBusy}
+              />
+            </div>
+
+            {/* Volume */}
+            <div>
+              <label style={{ 
+                display: "block", 
+                marginBottom: "8px", 
+                color: "#2c3e50", 
+                fontWeight: "600", 
+                fontSize: "14px" 
+              }}>
+                Volume <span style={{ color: "#e74c3c" }}>*</span>
+              </label>
+              <input
+                style={{
+                  width: "100%",
+                  height: "48px",
+                  padding: "0 14px",
+                  border: "1.5px solid rgba(44, 62, 80, 0.16)",
+                  borderRadius: "8px",
+                  fontSize: "15px",
+                  boxSizing: "border-box"
+                }}
+                inputMode="numeric"
+                value={asIntOrEmpty(values.volume)}
+                onChange={update("volume")}
+                placeholder="Ex: 1000"
+                required
+                disabled={isBusy}
+              />
+            </div>
+
+            {/* Preço de Custo */}
+            <div>
+              <label style={{ 
+                display: "block", 
+                marginBottom: "8px", 
+                color: "#2c3e50", 
+                fontWeight: "600", 
+                fontSize: "14px" 
+              }}>
+                Preço de custo <span style={{ color: "#e74c3c" }}>*</span>
+              </label>
+              <input
+                style={{
+                  width: "100%",
+                  height: "48px",
+                  padding: "0 14px",
+                  border: "1.5px solid rgba(44, 62, 80, 0.16)",
+                  borderRadius: "8px",
+                  fontSize: "15px",
+                  boxSizing: "border-box"
+                }}
+                value={values.precoCusto}
+                onChange={update("precoCusto")}
+                placeholder="Ex: 10.50"
+                required
+                disabled={isBusy}
+              />
+            </div>
+          </div>
+
+          {/* Coluna 2 */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+            {/* Marca */}
+            <div>
+              <label style={{ 
+                display: "block", 
+                marginBottom: "8px", 
+                color: "#2c3e50", 
+                fontWeight: "600", 
+                fontSize: "14px" 
+              }}>
+                Marca (opcional)
+              </label>
+              <input
+                style={{
+                  width: "100%",
+                  height: "48px",
+                  padding: "0 14px",
+                  border: "1.5px solid rgba(44, 62, 80, 0.16)",
+                  borderRadius: "8px",
+                  fontSize: "15px",
+                  boxSizing: "border-box"
+                }}
+                value={values.marca}
+                onChange={update("marca")}
+                placeholder="Ex: MinhaMarca"
+                disabled={isBusy}
+              />
+            </div>
+
+            {/* Validade */}
+            <div>
+              <label style={{ 
+                display: "block", 
+                marginBottom: "8px", 
+                color: "#2c3e50", 
+                fontWeight: "600", 
+                fontSize: "14px" 
+              }}>
+                Validade (opcional)
+              </label>
+              <input
+                type="date"
+                style={{
+                  width: "100%",
+                  height: "48px",
+                  padding: "0 14px",
+                  border: "1.5px solid rgba(44, 62, 80, 0.16)",
+                  borderRadius: "8px",
+                  fontSize: "15px",
+                  boxSizing: "border-box"
+                }}
+                value={values.validade}
+                onChange={update("validade")}
+                disabled={isBusy}
+              />
+            </div>
+
+            {/* Quantidade */}
+            <div>
+              <label style={{ 
+                display: "block", 
+                marginBottom: "8px", 
+                color: "#2c3e50", 
+                fontWeight: "600", 
+                fontSize: "14px" 
+              }}>
+                Quantidade {isEdit ? "" : "(opcional)"}
+              </label>
+              <input
+                style={{
+                  width: "100%",
+                  height: "48px",
+                  padding: "0 14px",
+                  border: "1.5px solid rgba(44, 62, 80, 0.16)",
+                  borderRadius: "8px",
+                  fontSize: "15px",
+                  boxSizing: "border-box"
+                }}
+                inputMode="numeric"
+                value={asIntOrEmpty(values.quantidade)}
+                onChange={update("quantidade")}
+                placeholder={isEdit ? "Ex: 10" : "Deixe vazio para iniciar com 0"}
+                disabled={isBusy}
+              />
+            </div>
+
+            {/* Preço de Venda */}
+            <div>
+              <label style={{ 
+                display: "block", 
+                marginBottom: "8px", 
+                color: "#2c3e50", 
+                fontWeight: "600", 
+                fontSize: "14px" 
+              }}>
+                Preço de venda <span style={{ color: "#e74c3c" }}>*</span>
+              </label>
+              <input
+                style={{
+                  width: "100%",
+                  height: "48px",
+                  padding: "0 14px",
+                  border: "1.5px solid rgba(44, 62, 80, 0.16)",
+                  borderRadius: "8px",
+                  fontSize: "15px",
+                  boxSizing: "border-box"
+                }}
+                value={values.precoVenda}
+                onChange={update("precoVenda")}
+                placeholder="Ex: 12.90"
+                required
+                disabled={isBusy}
+              />
+            </div>
+          </div>
         </div>
 
-        <div className="form-group">
-          <label>Departamento (departamento)</label>
-          <input value={values.departamento} onChange={update("departamento")} placeholder="Ex: Bebidas" required />
-        </div>
-
-        <div className="form-group" style={{ gridColumn: "1 / -1" }}>
-          <label>Descrição (descricao)</label>
-          <input value={values.descricao} onChange={update("descricao")} placeholder="Descrição do produto" required />
-        </div>
-
-        <div className="form-group">
-          <label>Marca (marca) (opcional)</label>
-          <input value={values.marca} onChange={update("marca")} placeholder="Ex: MinhaMarca" />
-        </div>
-
-        <div className="form-group">
-          <label>Validade (validade) (opcional)</label>
-          <input type="date" value={values.validade} onChange={update("validade")} />
-        </div>
-
-        <div className="form-group">
-          <label>Volume (volume)</label>
+        {/* Descrição (full width) */}
+        <div>
+          <label style={{ 
+            display: "block", 
+            marginBottom: "8px", 
+            color: "#2c3e50", 
+            fontWeight: "600", 
+            fontSize: "14px" 
+          }}>
+            Descrição <span style={{ color: "#e74c3c" }}>*</span>
+          </label>
           <input
-            inputMode="numeric"
-            value={asIntOrEmpty(values.volume)}
-            onChange={update("volume")}
-            placeholder="Ex: 1000"
+            style={{
+              width: "100%",
+              height: "48px",
+              padding: "0 14px",
+              border: "1.5px solid rgba(44, 62, 80, 0.16)",
+              borderRadius: "8px",
+              fontSize: "15px",
+              boxSizing: "border-box"
+            }}
+            value={values.descricao}
+            onChange={update("descricao")}
+            placeholder="Descrição do produto"
             required
+            disabled={isBusy}
           />
         </div>
 
-        <div className="form-group">
-          <label>Quantidade (quantidade) {isEdit ? "" : "(opcional)"}</label>
-          <input
-            inputMode="numeric"
-            value={asIntOrEmpty(values.quantidade)}
-            onChange={update("quantidade")}
-            placeholder={isEdit ? "Ex: 10" : "Deixe vazio para iniciar com 0"}
-          />
-        </div>
-
-        <div className="form-group">
-          <label>Preço de custo (precoCusto)</label>
-          <input value={values.precoCusto} onChange={update("precoCusto")} placeholder="Ex: 10.50" required />
-        </div>
-
-        <div className="form-group">
-          <label>Preço de venda (precoVenda)</label>
-          <input value={values.precoVenda} onChange={update("precoVenda")} placeholder="Ex: 12.90" required />
-        </div>
-      </div>
-
-      <div style={{ marginTop: 16 }}>
-        <div style={{ fontWeight: 900, color: "#2c3e50" }}>Imagens (ImagemProduto)</div>
-        <div style={{ marginTop: 8, display: "grid", gap: 10 }}>
+        {/* Seção de Imagens */}
+        <div style={{ 
+          marginTop: "30px", 
+          paddingTop: "20px", 
+          borderTop: "1px solid rgba(44, 62, 80, 0.1)" 
+        }}>
+          <h3 style={{ 
+            color: "#2c3e50", 
+            fontSize: "18px", 
+            fontWeight: "bold", 
+            marginBottom: "16px" 
+          }}>
+            Imagens do Produto
+          </h3>
+          
           <input
             ref={fileInputRef}
             type="file"
@@ -173,76 +399,151 @@ export default function ProdutoForm({
             multiple
             onChange={(e) => addFiles(e.target.files)}
             disabled={isBusy}
+            style={{
+              width: "100%",
+              height: "48px",
+              padding: "0 14px",
+              border: "1.5px dashed #3498db",
+              borderRadius: "8px",
+              background: "rgba(52, 152, 219, 0.05)",
+              fontSize: "15px",
+              boxSizing: "border-box"
+            }}
           />
-          <div style={{ color: "#7f8c8d", fontWeight: 700, fontSize: 13 }}>
-            Máximo 5 imagens por envio. Tipos: JPG/PNG/WebP.
+          
+          <div style={{ 
+            color: "#7f8c8d", 
+            fontSize: "13px", 
+            marginTop: "8px" 
+          }}>
+            Máximo 5 imagens por envio. Tipos permitidos: JPG, PNG, WebP.
           </div>
+
+          {/* Preview de imagens */}
+          {previews.length > 0 && (
+            <div style={{ marginTop: "20px" }}>
+              <h4 style={{ 
+                color: "#2c3e50", 
+                fontSize: "16px", 
+                fontWeight: "bold", 
+                marginBottom: "12px" 
+              }}>
+                Pré-visualização
+              </h4>
+              <div style={{ 
+                display: "grid", 
+                gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", 
+                gap: "12px" 
+              }}>
+                {previews.map((p, idx) => (
+                  <div key={`${p.file.name}-${idx}`} style={{
+                    border: "1px solid #eee",
+                    borderRadius: "8px",
+                    overflow: "hidden",
+                    backgroundColor: "white"
+                  }}>
+                    <div style={{ 
+                      width: "100%", 
+                      height: "120px", 
+                      overflow: "hidden",
+                      backgroundColor: "#f8f9fa"
+                    }}>
+                      <img 
+                        src={p.url} 
+                        alt={p.file.name} 
+                        style={{ 
+                          width: "100%", 
+                          height: "100%", 
+                          objectFit: "cover" 
+                        }}
+                      />
+                    </div>
+                    <div style={{ padding: "10px" }}>
+                      <div style={{ 
+                        fontSize: "12px", 
+                        color: "#2c3e50", 
+                        fontWeight: "600",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis"
+                      }}>
+                        {p.file.name}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeFileAt(idx)}
+                        disabled={isBusy}
+                        style={{
+                          width: "100%",
+                          marginTop: "8px",
+                          padding: "6px",
+                          border: "none",
+                          borderRadius: "6px",
+                          background: "#ffebee",
+                          color: "#e74c3c",
+                          fontSize: "12px",
+                          fontWeight: "600",
+                          cursor: "pointer"
+                        }}
+                      >
+                        Remover
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
-        {isEdit && existingImages?.length ? (
-          <div style={{ marginTop: 14 }}>
-            <div style={{ color: "#2c3e50", fontWeight: 900, marginBottom: 10 }}>Imagens existentes</div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 12 }}>
-              {existingImages.map((img) => (
-                <div key={img.id} className="product-card">
-                  <div className="product-card__imgWrap">
-                    <img
-                      className="product-card__img"
-                      src={resolveUploadUrl(img.url)}
-                      alt={img.nomeArquivo || `Imagem ${img.id}`}
-                      style={{ height: 110 }}
-                    />
-                  </div>
-                  <div className="product-card__body" style={{ padding: 10 }}>
-                    <div className="product-card__name" style={{ WebkitLineClamp: 1, minHeight: "auto" }}>
-                      {img.nomeArquivo}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div style={{ marginTop: 10, color: "#7f8c8d", fontWeight: 700, fontSize: 13 }}>
-              Observação: o backend atual possui endpoint apenas para <strong>adicionar</strong> imagens (`POST /produtos/:id/imagens`).
-            </div>
-          </div>
-        ) : null}
-
-        {previews?.length ? (
-          <div style={{ marginTop: 14 }}>
-            <div style={{ color: "#2c3e50", fontWeight: 900, marginBottom: 10 }}>Pré-visualização (novo envio)</div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 12 }}>
-              {previews.map((p, idx) => (
-                <div key={`${p.file.name}-${idx}`} className="product-card">
-                  <div className="product-card__imgWrap">
-                    <img className="product-card__img" src={p.url} alt={p.file.name} style={{ height: 110 }} />
-                  </div>
-                  <div className="product-card__body" style={{ padding: 10 }}>
-                    <div className="product-card__name" style={{ WebkitLineClamp: 1, minHeight: "auto" }}>
-                      {p.file.name}
-                    </div>
-                  </div>
-                  <div className="product-card__footer" style={{ padding: 10 }}>
-                    <button type="button" className="hero__ctrlBtn" onClick={() => removeFileAt(idx)} aria-label="Remover imagem">
-                      X
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : null}
-      </div>
-
-      <div style={{ marginTop: 18, display: "flex", gap: 10, justifyContent: "flex-end" }}>
-        <button type="button" className="product-card__btn" onClick={onCancel} disabled={isBusy} style={{ width: 160 }}>
-          Cancelar
-        </button>
-        <button type="submit" className="shop-header__loginBtn" disabled={isBusy} style={{ width: 180, height: 44 }}>
-          Salvar
-        </button>
-      </div>
-    </form>
+        {/* Botões */}
+        <div style={{ 
+          display: "flex", 
+          justifyContent: "flex-end", 
+          gap: "12px", 
+          marginTop: "40px",
+          paddingTop: "20px",
+          borderTop: "1px solid rgba(44, 62, 80, 0.1)"
+        }}>
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={isBusy}
+            style={{
+              minWidth: "120px",
+              height: "48px",
+              padding: "0 20px",
+              border: "1.5px solid #ccc",
+              borderRadius: "8px",
+              background: "white",
+              color: "#2c3e50",
+              fontSize: "15px",
+              fontWeight: "600",
+              cursor: "pointer"
+            }}
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={isBusy}
+            style={{
+              minWidth: "140px",
+              height: "48px",
+              padding: "0 20px",
+              border: "none",
+              borderRadius: "8px",
+              background: "#3498db",
+              color: "white",
+              fontSize: "15px",
+              fontWeight: "600",
+              cursor: "pointer"
+            }}
+          >
+            {isBusy ? "Salvando..." : "Salvar Produto"}
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }
-
