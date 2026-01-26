@@ -45,6 +45,75 @@ class ProdutoController {
       });
     }
   }
+
+  async buscarProdutos(req, reply) {
+    try {
+      const result = await produtoService.searchProdutosPublicos(req.query);
+
+      return reply.send({
+        success: true,
+        ...result
+      });
+    } catch (error) {
+      const status = error.statusCode || 500;
+      return reply.code(status).send({
+        error: error.message
+      });
+    }
+  }
+
+  async listarSugestoes(req, reply) {
+    try {
+      const { q, limit } = req.query || {};
+      const sugestoes = await produtoService.listSugestoesProdutos(q, limit);
+
+      return reply.send({
+        success: true,
+        data: sugestoes,
+        count: sugestoes.length
+      });
+    } catch (error) {
+      const status = error.statusCode || 500;
+      return reply.code(status).send({
+        error: error.message
+      });
+    }
+  }
+
+  async listarProdutosAleatorios(req, reply) {
+    try {
+      const { limit } = req.query || {};
+      const produtos = await produtoService.listProdutosAleatorios(limit);
+
+      return reply.send({
+        success: true,
+        data: produtos,
+        count: produtos.length
+      });
+    } catch (error) {
+      const status = error.statusCode || 500;
+      return reply.code(status).send({
+        error: error.message
+      });
+    }
+  }
+
+  async listarProdutosAleatoriosPorCategoria(req, reply) {
+    try {
+      const data = await produtoService.listProdutosAleatoriosPorCategoria();
+
+      return reply.send({
+        success: true,
+        data,
+        count: data.length
+      });
+    } catch (error) {
+      const status = error.statusCode || 500;
+      return reply.code(status).send({
+        error: error.message
+      });
+    }
+  }
   
   async buscarProduto(req, reply) {
     try {

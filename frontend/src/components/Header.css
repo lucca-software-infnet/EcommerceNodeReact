@@ -49,8 +49,14 @@
   min-width: 0;
 }
 
-.shop-header__searchInput {
+.shop-header__searchField {
+  position: relative;
   flex: 1;
+  min-width: 0;
+}
+
+.shop-header__searchInput {
+  width: 100%;
   min-width: 0;
   height: 44px;
   border: 1px solid rgba(44, 62, 80, 0.16);
@@ -65,6 +71,37 @@
 .shop-header__searchInput:focus {
   border-color: #3498db;
   box-shadow: 0 0 0 4px rgba(52, 152, 219, 0.18);
+}
+
+.search-suggestions {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid rgba(44, 62, 80, 0.12);
+  box-shadow: 0 12px 26px rgba(44, 62, 80, 0.16);
+  padding: 6px 0;
+  z-index: 20;
+}
+
+.search-suggestions__item {
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font-weight: 600;
+  color: #2c3e50;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+.search-suggestions__item:hover {
+  background: rgba(52, 152, 219, 0.1);
+  color: #2980b9;
 }
 
 .shop-header__searchBtn {

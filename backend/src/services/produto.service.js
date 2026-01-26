@@ -114,6 +114,13 @@ const PRODUTO_SELECT = {
   }
 };
 
+const SUGESTAO_SELECT = {
+  id: true,
+  descricao: true,
+  departamento: true,
+  marca: true
+};
+
 function toProdutoDTO(produto, baseUrl = '/uploads/products') {
   if (!produto) return null;
   
@@ -328,6 +335,158 @@ class ProdutoService {
       
     } catch (error) {
       throw new AppError('Erro ao listar produtos: ' + error.message, 500);
+    }
+  }
+
+  /**
+   * Busca produtos públicos por termo (para página de resultados)
+   */
+  async searchProdutosPublicos(filters = {}) {
+    try {
+      const page = Math.max(asNonNegativeInt(filters.page || 1, 'Página'), 1);
+      const limit = Math.min(Math.max(asNonNegativeInt(filters.limit || 20, 'Limite'), 1), 100);
+      const busca = normalizeString(filters.q, 'Termo de busca', true);
+
+      if (!busca) {
+        return {
+          metadata: {
+            page,
+            limit,
+            total: 0,
+            pages: 0
+          },
+          data: []
+        };
+      }
+
+      return this.listProdutosPublicos({
+        ...filters,
+        page,
+        limit,
+        q: busca
+      });
+    } catch (error) {
+      throw new AppError('Erro ao buscar produtos: ' + error.message, 500);
+    }
+  }
+
+  /**
+   * Sugestões para autocomplete
+   */
+  async listSugestoesProdutos(term, limit = 10) {
+    try {
+      const busca = normalizeString(term, 'Termo de busca', true);
+      if (!busca) return [];
+
+      const resolvedLimit = limit === undefined || limit === null || limit === '' ? 10 : limit;
+      const take = Math.min(Math.max(asNonNegativeInt(resolvedLimit, 'Limite'), 1), 10);
+
+      const baseWhere = {
+        quantidade: { gt: 0 }
+      };
+
+      const principais = await prisma.produto.findMany({
+        where: {
+          ...baseWhere,
+          descricao: { startsWith: busca }
+        },
+        select: SUGESTAO_SELECT,
+        orderBy: { descricao: 'asc' },
+        take
+      });
+
+      if (principais.length >= take) return principais;
+
+      const restantes = take - principais.length;
+      const principaisIds = principais.map((p) => p.id);
+
+      const complementares = await prisma.produto.findMany({
+        where: {
+          ...baseWhere,
+          OR: [
+            { descricao: { contains: busca } },
+            { codigoBarra: { contains: busca } },
+            { departamento: { contains: busca } },
+            { marca: { contains: busca } }
+          ],
+          ...(principaisIds.length ? { NOT: { id: { in: principaisIds } } } : {})
+        },
+        select: SUGESTAO_SELECT,
+        orderBy: { descricao: 'asc' },
+        take: restantes
+      });
+
+      return [...principais, ...complementares];
+    } catch (error) {
+      throw new AppError('Erro ao buscar sugestões: ' + error.message, 500);
+    }
+  }
+
+  /**
+   * Lista produtos aleatórios (home)
+   */
+  async listProdutosAleatorios(limit = 16) {
+    try {
+      const resolvedLimit = limit === undefined || limit === null || limit === '' ? 16 : limit;
+      const take = Math.min(Math.max(asNonNegativeInt(resolvedLimit, 'Limite'), 1), 100);
+
+      const rows = await prisma.$queryRaw`
+        SELECT id
+        FROM Produto
+        WHERE quantidade > 0
+        ORDER BY RAND()
+        LIMIT ${take}
+      `;
+
+      const ids = rows.map((row) => Number(row.id)).filter((id) => Number.isFinite(id));
+      if (!ids.length) return [];
+
+      const produtos = await prisma.produto.findMany({
+        where: { id: { in: ids } },
+        select: PRODUTO_SELECT
+      });
+
+      const byId = new Map(produtos.map((p) => [p.id, p]));
+      return ids.map((id) => byId.get(id)).filter(Boolean).map((p) => toProdutoDTO(p));
+    } catch (error) {
+      throw new AppError('Erro ao listar produtos aleatórios: ' + error.message, 500);
+    }
+  }
+
+  /**
+   * Lista 1 produto aleatório por categoria (home)
+   */
+  async listProdutosAleatoriosPorCategoria() {
+    try {
+      const rows = await prisma.$queryRaw`
+        SELECT departamento, SUBSTRING_INDEX(GROUP_CONCAT(id ORDER BY RAND()), ',', 1) AS id
+        FROM Produto
+        WHERE quantidade > 0
+        GROUP BY departamento
+      `;
+
+      const ids = rows.map((row) => Number(row.id)).filter((id) => Number.isFinite(id));
+      if (!ids.length) return [];
+
+      const produtos = await prisma.produto.findMany({
+        where: { id: { in: ids } },
+        select: PRODUTO_SELECT
+      });
+
+      const byId = new Map(produtos.map((p) => [p.id, p]));
+
+      return rows
+        .map((row) => ({
+          categoria: String(row.departamento),
+          produto: byId.get(Number(row.id))
+        }))
+        .filter((item) => item.produto)
+        .map((item) => ({
+          categoria: item.categoria,
+          produto: toProdutoDTO(item.produto)
+        }));
+    } catch (error) {
+      throw new AppError('Erro ao listar produtos por categoria: ' + error.message, 500);
     }
   }
   

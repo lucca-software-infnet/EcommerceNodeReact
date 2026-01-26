@@ -12,6 +12,11 @@ export default async function produtoRoutes(app) {
   // ======================
   
   app.get("/produtos", produtoController.listarProdutos);
+
+  app.get("/produtos/sugestoes", produtoController.listarSugestoes);
+  app.get("/produtos/busca", produtoController.buscarProdutos);
+  app.get("/produtos/random", produtoController.listarProdutosAleatorios);
+  app.get("/produtos/random-por-categoria", produtoController.listarProdutosAleatoriosPorCategoria);
   
   app.get("/produtos/:id", produtoController.buscarProduto);
   

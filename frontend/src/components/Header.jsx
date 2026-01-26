@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { api } from "../api/client.js";
 import { useAuth } from "../contexts/AuthContext.jsx";
 import "./Header.css";
 
@@ -42,12 +43,16 @@ export default function Header({ onSearch, initialQuery = "", isInitializingSess
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuth();
 
-  const isControlledSearch = typeof onSearch === "function";
-  const [uncontrolledQuery, setUncontrolledQuery] = useState(initialQuery);
+  const [query, setQuery] = useState(initialQuery);
+  const [suggestions, setSuggestions] = useState([]);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef(null);
+  const suggestionRequestId = useRef(0);
 
-  const query = isControlledSearch ? initialQuery : uncontrolledQuery;
+  useEffect(() => {
+    setQuery(initialQuery);
+  }, [initialQuery]);
 
   useEffect(() => {
     if (!isMenuOpen) return;
@@ -74,23 +79,50 @@ export default function Header({ onSearch, initialQuery = "", isInitializingSess
   const initials = useMemo(() => getInitials(user), [user]);
   const avatarUrl = user?.avatarUrl || user?.fotoUrl || user?.foto || svgAvatarDataUrl(initials);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const q = String(query || "").trim();
-    if (isControlledSearch) {
-      onSearch(q);
+  useEffect(() => {
+    const term = query.trim();
+    if (!isSearchFocused || !term) {
+      setSuggestions([]);
       return;
     }
 
-    // Header global: busca deve funcionar em qualquer página.
-    // Estratégia simples: navegar para a Home com query na URL.
-    navigate(q ? `/?q=${encodeURIComponent(q)}` : "/");
+    const requestId = ++suggestionRequestId.current;
+    const timer = setTimeout(async () => {
+      try {
+        const response = await api.get("/produtos/sugestoes", {
+          params: { q: term, limit: 10 }
+        });
+        if (suggestionRequestId.current !== requestId) return;
+        const data = response?.data?.data;
+        setSuggestions(Array.isArray(data) ? data.slice(0, 10) : []);
+      } catch (error) {
+        if (suggestionRequestId.current === requestId) {
+          setSuggestions([]);
+        }
+      }
+    }, 320);
+
+    return () => clearTimeout(timer);
+  }, [query, isSearchFocused]);
+
+  const runSearch = (term) => {
+    const q = String(term || "").trim();
+    setSuggestions([]);
+    setIsSearchFocused(false);
+    navigate(q ? `/search?q=${encodeURIComponent(q)}` : "/search");
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    runSearch(query);
   };
 
   const go = (path) => {
     setIsMenuOpen(false);
     navigate(path);
   };
+
+  const showSuggestions = isSearchFocused && query.trim().length > 0 && suggestions.length > 0;
 
   return (
     <header className="shop-header">
@@ -101,17 +133,40 @@ export default function Header({ onSearch, initialQuery = "", isInitializingSess
         </Link>
 
         <form className="shop-header__search" onSubmit={handleSubmit} role="search">
-          <input
-            value={query}
-            onChange={(e) => {
-              const next = e.target.value;
-              if (isControlledSearch) onSearch(next);
-              else setUncontrolledQuery(next);
-            }}
-            className="shop-header__searchInput"
-            placeholder="Buscar produtos, marcas e categorias..."
-            aria-label="Buscar"
-          />
+          <div className="shop-header__searchField">
+            <input
+              value={query}
+              onChange={(e) => {
+                const next = e.target.value;
+                setQuery(next);
+                if (typeof onSearch === "function") onSearch(next);
+              }}
+              onFocus={() => setIsSearchFocused(true)}
+              onBlur={() => setIsSearchFocused(false)}
+              className="shop-header__searchInput"
+              placeholder="Buscar produtos, marcas e categorias..."
+              aria-label="Buscar"
+            />
+            {showSuggestions ? (
+              <div className="search-suggestions" role="listbox" aria-label="Sugestões de produtos">
+                {suggestions.map((suggestion) => (
+                  <button
+                    key={suggestion.id}
+                    type="button"
+                    className="search-suggestions__item"
+                    role="option"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => {
+                      setQuery(suggestion.descricao || "");
+                      runSearch(suggestion.descricao);
+                    }}
+                  >
+                    {suggestion.descricao}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
           <button className="shop-header__searchBtn" type="submit" aria-label="Buscar">
             <svg
               className="shop-header__searchIcon"

@@ -1,23 +1,54 @@
-import { useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useEffect, useState } from "react";
 import HeroCarousel from "../components/home/HeroCarousel.jsx";
 import CategoryCarousel from "../components/home/CategoryCarousel.jsx";
 import ProductCard from "../components/home/ProductCard.jsx";
-import { HERO_SLIDES, MOCK_PRODUCTS } from "../components/home/mockCatalog.js";
+import { HERO_SLIDES } from "../components/home/mockCatalog.js";
+import { api } from "../api/client.js";
 import "./Home.css";
 
 export default function Home() {
-  const [searchParams] = useSearchParams();
-  const query = searchParams.get("q") || "";
+  const [randomProducts, setRandomProducts] = useState([]);
+  const [categoryItems, setCategoryItems] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return MOCK_PRODUCTS;
-    return MOCK_PRODUCTS.filter((p) => p.name.toLowerCase().includes(q));
-  }, [query]);
+  useEffect(() => {
+    let isActive = true;
 
-  const first = filtered.slice(0, 8);
-  const second = filtered.slice(8, 16);
+    const loadHome = async () => {
+      setIsLoading(true);
+      setError("");
+
+      try {
+        const [randomRes, categoryRes] = await Promise.all([
+          api.get("/produtos/random", { params: { limit: 16 } }),
+          api.get("/produtos/random-por-categoria")
+        ]);
+
+        if (!isActive) return;
+
+        const randomData = randomRes?.data?.data;
+        const categoryData = categoryRes?.data?.data;
+
+        setRandomProducts(Array.isArray(randomData) ? randomData : []);
+        setCategoryItems(Array.isArray(categoryData) ? categoryData : []);
+      } catch (err) {
+        if (!isActive) return;
+        setError("Nao foi possivel carregar os produtos.");
+      } finally {
+        if (isActive) setIsLoading(false);
+      }
+    };
+
+    loadHome();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  const first = randomProducts.slice(0, 8);
+  const second = randomProducts.slice(8, 16);
 
   return (
     <div className="home">
@@ -29,8 +60,13 @@ export default function Home() {
         <section className="home-section" aria-label="Ofertas em destaque">
           <div className="home-section__head">
             <h2 className="home-section__title">Destaques para você</h2>
-            <div className="home-section__count">{filtered.length} itens</div>
+            <div className="home-section__count">{randomProducts.length} itens</div>
           </div>
+
+          {error ? <div className="home-section__count">{error}</div> : null}
+          {!error && !isLoading && randomProducts.length === 0 ? (
+            <div className="home-section__count">Nenhum produto disponivel.</div>
+          ) : null}
 
           <div className="home-rowGrid">
             {first.slice(0, 4).map((p) => (
@@ -45,7 +81,7 @@ export default function Home() {
         </section>
 
         {/* 3) Carousel menor por categoria */}
-        <CategoryCarousel products={filtered} />
+        <CategoryCarousel items={categoryItems} />
 
         {/* 4) Novamente duas linhas horizontais (4 cards cada) */}
         <section className="home-section" aria-label="Mais ofertas">
