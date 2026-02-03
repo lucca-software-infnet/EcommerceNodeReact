@@ -53,11 +53,12 @@ export default function EditProduct() {
   const departamentoOptions = useMemo(
     () => [
       { value: "", label: "Selecione..." },
-      { value: "Bebidas", label: "Bebidas" },
+      { value: "Bebida", label: "Bebida" },
       { value: "Alimentos", label: "Alimentos" },
       { value: "Higiene", label: "Higiene" },
       { value: "Limpeza", label: "Limpeza" },
-      { value: "Pet", label: "Pet" },
+      { value: "Eletronicos", label: "Eletronicos" },
+      { value: "Vestuario", label: "Vestuario" },
       { value: "Outros", label: "Outros" },
     ],
     []

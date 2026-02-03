@@ -21,11 +21,32 @@ function formatMoney(value) {
   return num.toFixed(2);
 }
 
+/**
+ 🔥 NORMALIZA QUALQUER RESPOSTA DO BACKEND
+ Aceita:
+ - []
+ - {data:[]}
+ - {success:true,data:[]}
+ - {data:{...}}
+ - objeto direto
+*/
 function normalizeListResponse(res) {
-  const data = res?.data;
-  if (Array.isArray(data)) return data;
-  if (Array.isArray(data?.data)) return data.data;
-  if (Array.isArray(data?.items)) return data.items;
+  const body = res?.data;
+
+  if (!body) return [];
+
+  if (Array.isArray(body)) return body;
+
+  if (Array.isArray(body.data)) return body.data;
+
+  if (body.data && typeof body.data === "object") {
+    return [body.data];
+  }
+
+  if (typeof body === "object") {
+    return [body];
+  }
+
   return [];
 }
 
@@ -62,7 +83,7 @@ export default function ProductsSection() {
   const [isLoadingList, setIsLoadingList] = useState(false);
   const [produtos, setProdutos] = useState([]);
 
-  const [values, setValues] = useState(() => ({
+  const [values, setValues] = useState({
     codigoBarra: "",
     descricao: "",
     validade: "",
@@ -72,42 +93,54 @@ export default function ProductsSection() {
     precoCusto: "",
     precoVenda: "",
     departamento: "",
-  }));
+  });
 
   const departamentoOptions = useMemo(
     () => [
       { value: "", label: "Selecione..." },
-      { value: "Bebidas", label: "Bebidas" },
+      { value: "Bebida", label: "Bebida" },
       { value: "Alimentos", label: "Alimentos" },
       { value: "Higiene", label: "Higiene" },
       { value: "Limpeza", label: "Limpeza" },
-      { value: "Pet", label: "Pet" },
+      { value: "Eletronicos", label: "Eletronicos" },
+      { value: "Vestuario", label: "Vestuario" },
       { value: "Outros", label: "Outros" },
     ],
     []
   );
 
   const update = (field) => (e) => {
-    const next = e.target.value;
-    setValues((v) => ({ ...v, [field]: next }));
+    setValues((v) => ({ ...v, [field]: e.target.value }));
   };
 
+  /**
+   🔥 FETCH PROFISSIONAL
+   - tenta /produtos
+   - fallback vendedor
+   - normaliza resposta
+  */
   const fetchProdutos = useCallback(async () => {
     setIsLoadingList(true);
     setNotice({ type: "", message: "" });
+
     try {
+      let res;
+
       try {
-        const res = await api.get("/produtos");
-        setProdutos(normalizeListResponse(res));
+        res = await api.get("/produtos");
       } catch (err) {
-        // fallback compatível com o backend já usado no projeto
         if (err?.response?.status === 404) {
-          const res2 = await api.get("/produtos/vendedor/meus");
-          setProdutos(normalizeListResponse(res2));
+          res = await api.get("/produtos/vendedor/meus");
         } else {
           throw err;
         }
       }
+
+      const lista = normalizeListResponse(res);
+
+      console.log("PRODUTOS NORMALIZADOS:", lista); // 👈 pode remover depois
+
+      setProdutos(Array.isArray(lista) ? lista : []);
     } catch (err) {
       setNotice({ type: "error", message: getApiErrorMessage(err, "Falha ao carregar produtos") });
       setProdutos([]);
@@ -116,15 +149,18 @@ export default function ProductsSection() {
     }
   }, []);
 
+  /**
+   🔥 CARREGA AUTOMATICAMENTE AO ABRIR A TELA
+  */
   useEffect(() => {
-    if (!open.list) return;
     fetchProdutos();
-  }, [open.list, fetchProdutos]);
+  }, [fetchProdutos]);
 
   const handleCreate = async (e) => {
     e.preventDefault();
     setIsBusy(true);
     setNotice({ type: "", message: "" });
+
     try {
       const payload = {
         codigoBarra: String(values.codigoBarra).trim(),
@@ -139,7 +175,9 @@ export default function ProductsSection() {
       };
 
       await api.post("/produtos", payload);
+
       setNotice({ type: "success", message: "Produto salvo com sucesso." });
+
       setValues({
         codigoBarra: "",
         descricao: "",
@@ -153,7 +191,8 @@ export default function ProductsSection() {
       });
 
       setOpen({ add: false, list: true });
-      await fetchProdutos();
+
+      fetchProdutos();
     } catch (err) {
       setNotice({ type: "error", message: getApiErrorMessage(err, "Falha ao salvar produto") });
     } finally {
@@ -162,13 +201,13 @@ export default function ProductsSection() {
   };
 
   const handleDelete = async (id) => {
-    const ok = window.confirm("Deseja realmente excluir este produto?");
-    if (!ok) return;
+    if (!window.confirm("Deseja realmente excluir este produto?")) return;
 
-    setNotice({ type: "", message: "" });
     try {
       await api.delete(`/produtos/${id}`);
+
       setProdutos((prev) => prev.filter((p) => p?.id !== id));
+
       setNotice({ type: "success", message: "Produto excluído com sucesso." });
     } catch (err) {
       setNotice({ type: "error", message: getApiErrorMessage(err, "Falha ao excluir produto") });
@@ -180,163 +219,66 @@ export default function ProductsSection() {
   };
 
   return (
-    <section className="productsSection" aria-label="Gerenciamento de Produtos">
+    <section className="productsSection">
       <div className="productsSection__header">
         <h1 className="productsSection__title">Gerenciamento de Produtos</h1>
-        {open.list ? (
-          <button type="button" className="productsSection__refresh" onClick={fetchProdutos} disabled={isLoadingList}>
-            Atualizar
-          </button>
-        ) : null}
+
+        <button onClick={fetchProdutos} disabled={isLoadingList}>
+          Atualizar
+        </button>
       </div>
 
-      {notice?.message ? (
+      {notice?.message && (
         <div className={`productsSection__notice ${notice.type === "error" ? "productsSection__notice--error" : ""}`}>
           {notice.message}
         </div>
-      ) : null}
+      )}
 
-      <div className="acc" role="region" aria-label="Opções de produtos">
-        <AccordionItem
-          title="📦 Adicionar Produto"
-          isOpen={open.add}
-          onToggle={() => setOpen((s) => ({ add: !s.add, list: s.add ? s.list : false }))}
-          defaultId="acc-add"
-        >
-          <form className="productForm" onSubmit={handleCreate}>
-            <div className="productForm__grid">
-              <div className="field">
-                <label className="field__label">Código de barras</label>
-                <input className="field__input" value={values.codigoBarra} onChange={update("codigoBarra")} required />
-              </div>
+      {/* LISTA DIRETA — sem depender de accordion */}
+      <div className="tableWrap">
+        {isLoadingList && <div>Carregando produtos...</div>}
 
-              <div className="field">
-                <label className="field__label">Departamento</label>
-                <select className="field__input" value={values.departamento} onChange={update("departamento")} required>
-                  {departamentoOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+        {!isLoadingList && (!Array.isArray(produtos) || produtos.length === 0) && (
+          <div>Nenhum produto encontrado.</div>
+        )}
 
-              <div className="field field--full">
-                <label className="field__label">Descrição</label>
-                <input className="field__input" value={values.descricao} onChange={update("descricao")} required />
-              </div>
+        {Array.isArray(produtos) && produtos.length > 0 && (
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Descrição</th>
+                <th>Marca</th>
+                <th>Preço Venda</th>
+                <th>Estoque</th>
+                <th>Departamento</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
 
-              <div className="field">
-                <label className="field__label">Marca</label>
-                <input className="field__input" value={values.marca} onChange={update("marca")} />
-              </div>
+            <tbody>
+              {produtos.map((p) => (
+                <tr key={p.id}>
+                  <td>{p.codigoBarra}</td>
+                  <td>{p.descricao}</td>
+                  <td>{p.marca || "-"}</td>
+                  <td>{formatMoney(p.precoVenda)}</td>
+                  <td>{p.quantidade ?? 0}</td>
+                  <td>{p.departamento}</td>
 
-              <div className="field">
-                <label className="field__label">Validade</label>
-                <input className="field__input" type="date" value={values.validade} onChange={update("validade")} />
-              </div>
+                  <td>
+                    <button onClick={() => handleEdit(p.id)}>Editar</button>
 
-              <div className="field">
-                <label className="field__label">Volume</label>
-                <input className="field__input" inputMode="numeric" value={values.volume} onChange={update("volume")} required />
-              </div>
-
-              <div className="field">
-                <label className="field__label">Quantidade</label>
-                <input className="field__input" inputMode="numeric" value={values.quantidade} onChange={update("quantidade")} required />
-              </div>
-
-              <div className="field">
-                <label className="field__label">Preço Custo</label>
-                <input className="field__input" value={values.precoCusto} onChange={update("precoCusto")} required />
-              </div>
-
-              <div className="field">
-                <label className="field__label">Preço Venda</label>
-                <input className="field__input" value={values.precoVenda} onChange={update("precoVenda")} required />
-              </div>
-            </div>
-
-            <div className="productForm__actions">
-              <button type="submit" className="productForm__primary" disabled={isBusy}>
-                Salvar Produto
-              </button>
-            </div>
-          </form>
-        </AccordionItem>
-
-        <AccordionItem
-          title="📋 Mostrar Produtos"
-          isOpen={open.list}
-          onToggle={() => setOpen((s) => ({ add: s.list ? s.add : false, list: !s.list }))}
-          defaultId="acc-list"
-        >
-          <div className="tableWrap">
-            {isLoadingList ? <div className="tableWrap__loading">Carregando...</div> : null}
-
-            {!isLoadingList && !produtos.length ? (
-              <div className="tableWrap__empty">Nenhum produto encontrado.</div>
-            ) : null}
-
-            {produtos.length ? (
-              <div className="tableScroll" role="region" aria-label="Tabela de produtos">
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>Código</th>
-                      <th>Descrição</th>
-                      <th>Marca</th>
-                      <th>Preço Custo</th>
-                      <th>Preço Venda</th>
-                      <th>Validade</th>
-                      <th>Estoque</th>
-                      <th>Volume</th>
-                      <th>Quantidade</th>
-                      <th>Departamento</th>
-                      <th>Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {produtos.map((p) => {
-                      const estoque = p?.estoque ?? p?.quantidade ?? 0;
-                      const quantidade = p?.quantidade ?? 0;
-                      return (
-                        <tr key={p?.id ?? p?.codigoBarra}>
-                          <td className="td--mono">{p?.codigoBarra ?? "-"}</td>
-                          <td className="td--strong">{p?.descricao ?? "-"}</td>
-                          <td>{p?.marca || "-"}</td>
-                          <td className="td--money">{formatMoney(p?.precoCusto)}</td>
-                          <td className="td--money">{formatMoney(p?.precoVenda)}</td>
-                          <td>{toDateInputValue(p?.validade) ? new Date(p.validade).toLocaleDateString() : "-"}</td>
-                          <td>{estoque}</td>
-                          <td>{p?.volume ?? "-"}</td>
-                          <td>{quantidade}</td>
-                          <td>{p?.departamento ?? "-"}</td>
-                          <td>
-                            <div className="rowActions">
-                              <button type="button" className="rowActions__btn" onClick={() => handleEdit(p?.id)}>
-                                Editar
-                              </button>
-                              <button
-                                type="button"
-                                className="rowActions__btn rowActions__btn--danger"
-                                onClick={() => handleDelete(p?.id)}
-                              >
-                                Excluir
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            ) : null}
-          </div>
-        </AccordionItem>
+                    <button onClick={() => handleDelete(p.id)}>
+                      Excluir
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </section>
   );
 }
-
