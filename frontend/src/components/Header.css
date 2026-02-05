@@ -33,7 +33,7 @@ body {
   margin: 0 auto;
   padding: 12px 16px;
   display: grid;
-  grid-template-columns: 240px 1fr 220px;
+  grid-template-columns: 240px 1fr 260px;
   gap: 12px;
   align-items: center;
   height: 100%;
@@ -206,6 +206,7 @@ body {
   display: flex;
   justify-content: flex-end;
   align-items: center;
+  gap: 10px;
   position: relative;
   height: 100%;
 }
@@ -381,7 +382,7 @@ body {
 /* ===== RESPONSIVIDADE ===== */
 @media (max-width: 920px) {
   .shop-header__inner {
-    grid-template-columns: 200px 1fr 200px;
+    grid-template-columns: 200px 1fr 240px;
     padding: 12px 14px;
   }
   

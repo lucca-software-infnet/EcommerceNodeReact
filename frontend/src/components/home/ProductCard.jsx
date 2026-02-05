@@ -1,7 +1,9 @@
 import { formatBRL } from "../../utils/format.js";
 import { productImageDataUrl } from "../../utils/placeholders.js";
+import { useCartActions } from "../../contexts/CartContext.jsx";
 
 export default function ProductCard({ product }) {
+  const { addItem } = useCartActions();
   const img = product?.imageUrl || productImageDataUrl(product?.name, product?.seed);
 
   return (
@@ -18,7 +20,7 @@ export default function ProductCard({ product }) {
       </div>
 
       <div className="product-card__footer">
-        <button className="product-card__btn" type="button">
+        <button className="product-card__btn" type="button" onClick={() => addItem(product)}>
           Adicionar ao carrinho
         </button>
       </div>

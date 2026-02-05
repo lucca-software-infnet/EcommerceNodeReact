@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext.jsx";
 import { api } from "../api/client.js";
 import { useDebouncedValue } from "../hooks/useDebouncedValue.js";
+import HeaderCart from "./cart/HeaderCart.jsx";
 import "./Header.css";
 
 function getFullName(user) {
@@ -226,11 +227,15 @@ export default function Header({ initialQuery = "", isInitializingSession = fals
 
         <div className="shop-header__right" ref={menuRef}>
           {!isAuthenticated ? (
-            <Link to="/login" className="shop-header__loginBtn">
-              Logar
-            </Link>
+            <>
+              <HeaderCart />
+              <Link to="/login" className="shop-header__loginBtn">
+                Logar
+              </Link>
+            </>
           ) : (
             <>
+              <HeaderCart />
               <button
                 type="button"
                 className="shop-header__avatarBtn"
