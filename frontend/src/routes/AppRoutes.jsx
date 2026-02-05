@@ -14,6 +14,7 @@ import Me from "../pages/account/Me.jsx";
 import EditProduct from "../pages/account/EditProduct.jsx";
 import DashboardProdutos from "../pages/dashboard/DashboardProdutos.jsx";
 import EditarProduto from "../pages/dashboard/EditarProduto.jsx";
+import Cart from "../pages/cart/Cart.jsx";
 
 export default function AppRoutes({ isInitializingSession = false }) {
   return (
@@ -33,7 +34,7 @@ export default function AppRoutes({ isInitializingSession = false }) {
       <Route element={<ProtectedRoute />}>
         <Route path="/account" element={<Me />} />
         <Route path="/account/edit-product/:id" element={<EditProduct />} />
-        <Route path="/cart" element={<ComingSoon title="Carrinho" />} />
+        <Route path="/cart" element={<Cart />} />
         <Route path="/checkout" element={<ComingSoon title="Checkout" />} />
         <Route path="/orders" element={<ComingSoon title="Pedidos" />} />
         <Route path="/addresses" element={<ComingSoon title="Endereços" />} />
