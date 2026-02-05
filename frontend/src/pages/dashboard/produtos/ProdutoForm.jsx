@@ -12,18 +12,10 @@ function asString(value) {
   return String(value);
 }
 
-function resolveUploadUrl(url) {
-  if (!url) return "";
-  if (String(url).startsWith("http://") || String(url).startsWith("https://")) return String(url);
-  if (String(url).startsWith("/uploads/")) return String(url);
-  return String(url);
-}
-
 export default function ProdutoForm({
   mode,
   isBusy,
   initialValues,
-  existingImages = [],
   onSubmit,
   onCancel,
 }) {

@@ -38,7 +38,7 @@ export default function SearchResults() {
 
         const data = response?.data?.data;
         setResults(Array.isArray(data) ? data : []);
-      } catch (err) {
+      } catch {
         if (!isActive) return;
         setError("Nao foi possivel carregar a busca.");
         setResults([]);

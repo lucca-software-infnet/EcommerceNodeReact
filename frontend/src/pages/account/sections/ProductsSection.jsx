@@ -1,17 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../../api/client.js";
 import "./ProductsSection.css";
 
 function getApiErrorMessage(err, fallback) {
   return err?.response?.data?.error || err?.response?.data?.erro || fallback || "Ocorreu um erro";
-}
-
-function toDateInputValue(value) {
-  if (!value) return "";
-  const d = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toISOString().slice(0, 10);
 }
 
 function formatMoney(value) {
@@ -50,13 +43,6 @@ function normalizeListResponse(res) {
   return [];
 }
 
-function asNumberOrNull(value) {
-  if (value === "" || value === null || value === undefined) return null;
-  const n = Number(value);
-  if (!Number.isFinite(n)) return null;
-  return n;
-}
-
 function AccordionItem({ title, isOpen, onToggle, children, defaultId }) {
   return (
     <section className={`accItem ${isOpen ? "accItem--open" : ""}`} aria-label={title}>
@@ -75,43 +61,10 @@ function AccordionItem({ title, isOpen, onToggle, children, defaultId }) {
 export default function ProductsSection() {
   const navigate = useNavigate();
 
-  const [open, setOpen] = useState({ add: true, list: false });
-
   const [notice, setNotice] = useState({ type: "", message: "" });
-  const [isBusy, setIsBusy] = useState(false);
 
   const [isLoadingList, setIsLoadingList] = useState(false);
   const [produtos, setProdutos] = useState([]);
-
-  const [values, setValues] = useState({
-    codigoBarra: "",
-    descricao: "",
-    validade: "",
-    volume: "",
-    quantidade: "",
-    marca: "",
-    precoCusto: "",
-    precoVenda: "",
-    departamento: "",
-  });
-
-  const departamentoOptions = useMemo(
-    () => [
-      { value: "", label: "Selecione..." },
-      { value: "Bebida", label: "Bebida" },
-      { value: "Alimentos", label: "Alimentos" },
-      { value: "Higiene", label: "Higiene" },
-      { value: "Limpeza", label: "Limpeza" },
-      { value: "Eletronicos", label: "Eletronicos" },
-      { value: "Vestuario", label: "Vestuario" },
-      { value: "Outros", label: "Outros" },
-    ],
-    []
-  );
-
-  const update = (field) => (e) => {
-    setValues((v) => ({ ...v, [field]: e.target.value }));
-  };
 
   /**
    🔥 FETCH PROFISSIONAL
@@ -155,50 +108,6 @@ export default function ProductsSection() {
   useEffect(() => {
     fetchProdutos();
   }, [fetchProdutos]);
-
-  const handleCreate = async (e) => {
-    e.preventDefault();
-    setIsBusy(true);
-    setNotice({ type: "", message: "" });
-
-    try {
-      const payload = {
-        codigoBarra: String(values.codigoBarra).trim(),
-        descricao: String(values.descricao).trim(),
-        validade: values.validade ? new Date(values.validade).toISOString() : null,
-        volume: asNumberOrNull(values.volume) ?? 0,
-        quantidade: asNumberOrNull(values.quantidade) ?? 0,
-        marca: String(values.marca).trim() || null,
-        precoCusto: String(values.precoCusto).trim(),
-        precoVenda: String(values.precoVenda).trim(),
-        departamento: String(values.departamento).trim(),
-      };
-
-      await api.post("/produtos", payload);
-
-      setNotice({ type: "success", message: "Produto salvo com sucesso." });
-
-      setValues({
-        codigoBarra: "",
-        descricao: "",
-        validade: "",
-        volume: "",
-        quantidade: "",
-        marca: "",
-        precoCusto: "",
-        precoVenda: "",
-        departamento: "",
-      });
-
-      setOpen({ add: false, list: true });
-
-      fetchProdutos();
-    } catch (err) {
-      setNotice({ type: "error", message: getApiErrorMessage(err, "Falha ao salvar produto") });
-    } finally {
-      setIsBusy(false);
-    }
-  };
 
   const handleDelete = async (id) => {
     if (!window.confirm("Deseja realmente excluir este produto?")) return;
