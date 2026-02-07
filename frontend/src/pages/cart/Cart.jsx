@@ -1,6 +1,7 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useCartActions, useCartState } from "../../contexts/CartContext.jsx";
+import { startCheckoutPro } from "../../services/payments.service.js";
 import { formatBRL } from "../../utils/format.js";
 import "./Cart.css";
 
@@ -43,9 +44,46 @@ function CartRow({ item, onInc, onDec, onRemove }) {
 export default function Cart() {
   const { items } = useCartState();
   const { increment, decrement, remove } = useCartActions();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [checkoutError, setCheckoutError] = useState("");
 
   const total = useMemo(() => items.reduce((acc, it) => acc + (it.price || 0) * (it.qty || 0), 0), [items]);
   const itemCount = useMemo(() => items.reduce((acc, it) => acc + (it.qty || 0), 0), [items]);
+
+  async function handleCheckout() {
+    if (items.length === 0 || isSubmitting) return;
+
+    setCheckoutError("");
+    setIsSubmitting(true);
+
+    try {
+      const payloadItems = items.map((it) => ({
+        id: it.id,
+        nome: it.name,
+        precoUnitario: it.price,
+        quantidade: it.qty,
+      }));
+
+      const data = await startCheckoutPro({
+        items: payloadItems,
+        total,
+      });
+
+      const initPoint = data?.init_point;
+      if (!initPoint) {
+        throw new Error("Resposta inválida do servidor");
+      }
+
+      // Checkout Pro padrão: redirecionamento full page (sem iframe).
+      window.location.assign(initPoint);
+    } catch (err) {
+      const apiMsg = err?.response?.data?.error;
+      const msg = apiMsg || err?.message || "Não foi possível iniciar o pagamento";
+      setCheckoutError(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   return (
     <div className="cart-page">
@@ -91,8 +129,18 @@ export default function Cart() {
                 <strong>{formatBRL(total)}</strong>
               </div>
               <div className="cart-summary__hint">O layout do carrinho será refinado posteriormente.</div>
-              <button type="button" className="cart-summary__cta" disabled>
-                Finalizar compra (em breve)
+              {checkoutError ? (
+                <div role="alert" style={{ color: "#b42318", marginTop: 8, fontSize: 14 }}>
+                  {checkoutError}
+                </div>
+              ) : null}
+              <button
+                type="button"
+                className="cart-summary__cta"
+                onClick={handleCheckout}
+                disabled={items.length === 0 || isSubmitting}
+              >
+                {isSubmitting ? "Redirecionando..." : "Finalizar compra"}
               </button>
             </aside>
           </div>
