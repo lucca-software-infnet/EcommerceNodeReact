@@ -26,7 +26,17 @@ export async function paymentsRoutes(app) {
           ? "Erro ao iniciar pagamento"
           : err?.message || "Payload inválido";
 
-      request.log.warn({ err }, "payments/checkout failed");
+      // Evita logar dados sensíveis (ex.: headers/token) caso o SDK inclua detalhes da requisição no erro.
+      request.log.warn(
+        {
+          err: {
+            name: err?.name,
+            message: err?.message,
+            statusCode,
+          },
+        },
+        "payments/checkout failed"
+      );
       return reply.code(statusCode).send({ error: message });
     }
   });
