@@ -15,6 +15,9 @@ import EditProduct from "../pages/account/EditProduct.jsx";
 import DashboardProdutos from "../pages/dashboard/DashboardProdutos.jsx";
 import EditarProduto from "../pages/dashboard/EditarProduto.jsx";
 import Cart from "../pages/cart/Cart.jsx";
+import CheckoutSuccess from "../pages/checkout/CheckoutSuccess.jsx";
+import CheckoutFailure from "../pages/checkout/CheckoutFailure.jsx";
+import CheckoutPending from "../pages/checkout/CheckoutPending.jsx";
 
 export default function AppRoutes({ isInitializingSession = false }) {
   return (
@@ -29,6 +32,11 @@ export default function AppRoutes({ isInitializingSession = false }) {
       <Route path="/activate" element={<Activate />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+
+      {/* Retornos do Mercado Pago (devem ser públicos) */}
+      <Route path="/checkout/success" element={<CheckoutSuccess />} />
+      <Route path="/checkout/failure" element={<CheckoutFailure />} />
+      <Route path="/checkout/pending" element={<CheckoutPending />} />
 
       {/* Privado (e-commerce / conta) */}
       <Route element={<ProtectedRoute />}>

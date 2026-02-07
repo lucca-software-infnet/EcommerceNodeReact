@@ -22,4 +22,8 @@ export const env = {
 
   frontendUrl: process.env.FRONTEND_URL || "http://localhost:5173",
   cookieSecure: process.env.COOKIE_SECURE === "true",
+
+  // Mercado Pago (Checkout Pro)
+  // NUNCA exponha este token no frontend.
+  mercadoPagoAccessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN,
 };

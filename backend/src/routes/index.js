@@ -6,6 +6,7 @@ import { checkoutRoutes } from "./checkout.routes.js";
 import { pedidosRoutes, pedidoDetalheRoutes } from "./pedidos.routes.js";
 import { vendasRoutes } from "./vendas.routes.js";
 import { pagamentoRoutes } from "./pagamento.routes.js";
+import { paymentsRoutes } from "./payments.routes.js";
 
 export default async function routes(app) {
   // auth / users / produtos (plugins Fastify)
@@ -19,4 +20,5 @@ export default async function routes(app) {
   await pedidoDetalheRoutes(app);
   await vendasRoutes(app);
   await pagamentoRoutes(app);
+  await paymentsRoutes(app);
 }
