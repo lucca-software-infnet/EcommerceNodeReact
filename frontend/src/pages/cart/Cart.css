@@ -209,7 +209,18 @@
   font-weight: 900;
   cursor: pointer;
   box-shadow: 0 2px 5px rgba(52, 152, 219, 0.2);
-  opacity: 0.6;
+  opacity: 1;
+  transition: opacity 0.2s ease, transform 0.1s ease;
+}
+
+.cart-summary__cta:hover:not(:disabled) {
+  transform: translateY(-1px);
+  opacity: 0.95;
+}
+
+.cart-summary__cta:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .cart-empty {

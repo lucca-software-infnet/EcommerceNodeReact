@@ -2,43 +2,25 @@ import { createCheckoutProPreference } from "../services/mercadopagoCheckout.ser
 
 export async function paymentsRoutes(app) {
   app.post("/payments/checkout", async (request, reply) => {
-    const body = request.body || {};
-    const items = body?.items;
-    const total = body?.total;
-
     try {
+      const { items, total } = request.body ?? {};
+
       const data = await createCheckoutProPreference({
-        cartItems: items,
+        cartItems: items,       // 🔴 nome correto
         frontendTotal: total,
       });
 
-      if (!data?.preferenceId || !data?.init_point) {
-        return reply.code(502).send({
-          error: "Não foi possível iniciar o checkout no Mercado Pago",
-        });
+      if (!data?.init_point) {
+        return reply.code(502).send({ error: "Falha ao criar checkout" });
       }
 
       return reply.code(201).send(data);
     } catch (err) {
-      const statusCode = Number(err?.statusCode) || 500;
-      const message =
-        statusCode >= 500
-          ? "Erro ao iniciar pagamento"
-          : err?.message || "Payload inválido";
+      request.log.error(err, "payments/checkout failed");
 
-      // Evita logar dados sensíveis (ex.: headers/token) caso o SDK inclua detalhes da requisição no erro.
-      request.log.warn(
-        {
-          err: {
-            name: err?.name,
-            message: err?.message,
-            statusCode,
-          },
-        },
-        "payments/checkout failed"
-      );
-      return reply.code(statusCode).send({ error: message });
+      return reply.code(err?.statusCode || 500).send({
+        error: err?.message || "Erro ao iniciar pagamento",
+      });
     }
   });
 }
-

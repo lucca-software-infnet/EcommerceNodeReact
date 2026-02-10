@@ -20,5 +20,14 @@ export function toCatalogProduct(apiProduto) {
     imageUrl,
     raw: apiProduto,
   };
+
+}
+
+export function cartItemToCheckoutItem(item) {
+  return {
+    nome: item.nome || item.title,
+    quantidade: item.quantidade || item.qty,
+    precoUnitario: item.preco || item.price,
+  };
 }
 
