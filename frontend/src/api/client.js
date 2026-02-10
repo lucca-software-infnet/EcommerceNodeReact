@@ -60,6 +60,11 @@ api.interceptors.response.use(
     // Se não temos config ou não é 401, só propaga.
     if (!original || status !== 401) throw error;
 
+    // Checkout não pode derrubar sessão (nem disparar refresh/logout automático).
+    if (String(original?.url || "").includes("/payments/checkout")) {
+      throw error;
+    }
+
     const hadAuthHeader =
       !!original?.headers?.Authorization || !!original?.headers?.authorization;
     const hadAccessToken = !!getAccessToken();

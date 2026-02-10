@@ -3,6 +3,15 @@ dotenv.config();
 
 const isProd = process.env.NODE_ENV === "production";
 
+function requiredEnv(name) {
+  const value = process.env[name];
+  if (value == null || String(value).trim() === "") {
+    // Não inclui valor para não vazar secrets em logs.
+    throw new Error(`Variável de ambiente obrigatória ausente: ${name}`);
+  }
+  return String(value).trim();
+}
+
 export const env = {
   // Dockerfile expõe 3333 e o Vite proxy aponta para 3333 por padrão
   port: Number(process.env.PORT) || 3333,
@@ -20,10 +29,11 @@ export const env = {
   emailUser: process.env.EMAIL_USER,
   emailPass: process.env.EMAIL_PASS,
 
-  frontendUrl: process.env.FRONTEND_URL || "http://localhost:5173",
+  // Obrigatório: usado para CORS e retorno do Checkout Pro.
+  frontendUrl: requiredEnv("FRONTEND_URL"),
   cookieSecure: process.env.COOKIE_SECURE === "true",
 
   // Mercado Pago (Checkout Pro)
   // NUNCA exponha este token no frontend.
-  mercadoPagoAccessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN,
+  mercadoPagoAccessToken: requiredEnv("MERCADO_PAGO_ACCESS_TOKEN"),
 };

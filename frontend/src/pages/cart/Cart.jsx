@@ -77,7 +77,7 @@ export default function Cart() {
       // Checkout Pro padrão: redirecionamento full page (sem iframe).
       window.location.assign(initPoint);
     } catch (err) {
-      const apiMsg = err?.response?.data?.error;
+      const apiMsg = err?.response?.data?.error || err?.response?.data?.erro;
       const msg = apiMsg || err?.message || "Não foi possível iniciar o pagamento";
       setCheckoutError(msg);
     } finally {
