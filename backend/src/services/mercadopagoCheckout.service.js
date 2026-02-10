@@ -2,6 +2,30 @@ import { MercadoPagoConfig, Preference } from "mercadopago";
 
 import { env } from "../config/env.js";
 
+function mapMercadoPagoSdkError(err) {
+  const status =
+    Number(err?.status) ||
+    Number(err?.statusCode) ||
+    Number(err?.response?.status) ||
+    null;
+
+  // Mensagens curtas e seguras (sem ecoar payloads/headers).
+  if (status === 400) {
+    return { statusCode: 400, message: "Dados inválidos para iniciar o checkout" };
+  }
+  if (status === 401 || status === 403) {
+    return { statusCode: 502, message: "Credenciais do Mercado Pago inválidas ou sem permissão" };
+  }
+  if (status === 404) {
+    return { statusCode: 502, message: "Serviço do Mercado Pago indisponível" };
+  }
+  if (status && status >= 500) {
+    return { statusCode: 502, message: "Mercado Pago indisponível no momento" };
+  }
+
+  return { statusCode: 502, message: "Não foi possível se comunicar com o Mercado Pago" };
+}
+
 function joinUrl(base, pathname) {
   const b = String(base || "").trim().replace(/\/+$/, "");
   const p = String(pathname || "").trim();
@@ -89,12 +113,6 @@ function centsFromFrontendTotal(frontendTotal) {
 }
 
 export async function createCheckoutProPreference({ cartItems, frontendTotal }) {
-  if (!env.mercadoPagoAccessToken) {
-    const err = new Error("MERCADO_PAGO_ACCESS_TOKEN não configurado");
-    err.statusCode = 500;
-    throw err;
-  }
-
   const { items, totalCents } = normalizeCartItems(cartItems);
 
   // Segurança: o total do frontend não é confiável; usamos apenas para detectar divergência.
@@ -126,7 +144,15 @@ export async function createCheckoutProPreference({ cartItems, frontendTotal }) 
     auto_return: "approved",
   };
 
-  const result = await preference.create({ body });
+  let result;
+  try {
+    result = await preference.create({ body });
+  } catch (err) {
+    const mapped = mapMercadoPagoSdkError(err);
+    const e = new Error(mapped.message);
+    e.statusCode = mapped.statusCode;
+    throw e;
+  }
 
   return {
     preferenceId: result?.id,
